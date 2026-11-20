@@ -73,13 +73,39 @@ export default function Atlas(props: Props) {
         project();
         let missing = false;
         m.on("movestart", () => {
-          setPainted(true);
           missing = false;
           setStatus("");
         });
+        // The first idle event can precede the first drawn street tile. Keep the
+        // matching offline plate visible until the live map has real geometry.
+        const reveal = () => {
+          if (
+            dead ||
+            !m.isStyleLoaded() ||
+            !m.queryRenderedFeatures({
+              layers: ["sea", "buildings", "road-fill"],
+            }).length
+          )
+            return;
+          m.off("render", reveal);
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              if (!dead) setPainted(true);
+            }),
+          );
+        };
+        m.on("render", reveal);
         m.on("zoom", () => setZoom(m.getZoom()));
-        m.once("idle", () => setPainted(true));
-        m.on("move", project);
+        m.on("move", () => {
+          const center = m.getCenter();
+          if (
+            Math.abs(center.lat - SPLIT.lat) > 0.00001 ||
+            Math.abs(center.lng - SPLIT.lon) > 0.00001 ||
+            Math.abs(m.getZoom() - 15.05) > 0.001
+          )
+            setPainted(true);
+          project();
+        });
         m.on("resize", project);
         m.on("load", () => {
           if (dead) return;
