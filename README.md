@@ -1,4 +1,4 @@
-# SunCalc · The daylight atlas
+# SunCalc · Sun and shadow planner
 
 An English-language, installable solar planner. Drop a pin, scrub the local day, or select sunrise, solar noon, or sunset. Bookmarks, precise share fragments, solstice comparison, twilight, and a height-based shadow ruler work without an account. The app models a clear level horizon, not shade cast by terrain, buildings, or trees.
 
@@ -30,6 +30,16 @@ The CI suite checks solar events against independent US Naval Observatory refere
 The private GitHub repo is connected to Cloudflare Workers Builds. A push to main runs `npm run ci` then the platform's configured deployment command. Do not deploy application code manually. Wrangler is used locally for preview, migrations, secrets, and workflow monitoring. The immutable map import is an operator-triggered Workflow, never a public HTTP endpoint. Start it once with `npx wrangler workflows trigger suncalc-map-import`; check `npx wrangler workflows instances list suncalc-map-import`. It copies verified byte ranges using a resumable multipart upload and publishes only a complete archive.
 
 D1 holds install-key hashes, trial start, purchase references, recovery-code hashes and anonymous daily search counters. The Worker has no analytics, application request logging, ads, third-party browser assets, or cookies. Shared coordinates and times are in URL fragments; saved pins stay on the device.
+
+## Long Shadow
+
+The PWA uses the approved Long Shadow mark, Bricolage Grotesque, and a sunflower instrument face with a separately tuned dark map. **Auto / Light / Dark** lives in Appearance & settings. Auto follows the operating system; pinned preferences persist locally and across tabs. Scrubbing the sun, switching places and changing dates never change the theme. The browser controls, overlays, initial maps and installed-app assets use the same system. No cookies are used.
+
+The exposure strip uses solar altitude over the pin’s actual civil day. A background worker samples each minute and reduces it to a small set of gradient stops. The daily path supplies an immediate fallback. Both map palettes use identical tile URLs and a shared offline cache. The map applies color changes to existing paint properties without resetting its camera.
+
+Color roles and exposure stops are in `src/design/tokens.json`; prebuild generates the CSS palette. To refresh the two first-paint images from the bundled OSM tiles, run `npm run prebuild` and `CHROME_BIN=/usr/bin/google-chrome node --import tsx scripts/map-plates.ts`. The local renderer checks that real street/shoreline features were drawn before writing each image.
+
+The `design/long-shadow` branch builds the separate HTTPS working preview via Workers Builds, using `wrangler.preview.jsonc`, a separate entitlement database, and the same read-only map data. Preview billing stays disabled. A push to `main` is the production release.
 
 ## Paid launch gate
 

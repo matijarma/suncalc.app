@@ -10,8 +10,8 @@
     "test": "tsx --test tests/*.test.ts",
     "test:browser": "playwright test",
     "data:towns": "python3 scripts/towns.py",
-    "prebuild": "node scripts/map-lib.mjs",
-    "predev": "node scripts/map-lib.mjs",
+    "prebuild": "node scripts/map-lib.mjs && node scripts/design-css.mjs",
+    "predev": "node scripts/map-lib.mjs && node scripts/design-css.mjs",
     "ci": "npm test && npm run build"
   },
   "dependencies": {

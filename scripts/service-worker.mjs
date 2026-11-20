@@ -9,10 +9,14 @@ const all = files("dist").map((f) => f.slice(4));
 const shell = all.filter(
   (f) =>
     f.startsWith("/assets/") ||
+    f.startsWith("/brand/") ||
     (f.startsWith("/maps/lib/") && f.endsWith(".mjs")) ||
     [
       "/index.html",
       "/maps/split-waterfront.webp",
+      "/maps/split-waterfront-dark.webp",
+      "/appearance-boot.js",
+      "/icon-180.png",
       "/icon.svg",
       "/icon-192.png",
       "/icon-512.png",

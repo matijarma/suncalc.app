@@ -14,9 +14,14 @@ test("mobile sundown plan, save and round-trip share without cookies or third-pa
   await expect(
     page.getByText("Split waterfront", { exact: true }),
   ).toBeVisible();
-  await page.getByLabel("Planning date", { exact: true }).fill("2026-06-21");
+  await page.getByRole("button", { name: "Choose planning date" }).click();
+  await page
+    .getByRole("dialog")
+    .locator('input[type="date"]')
+    .fill("2026-06-21");
+  await page.getByRole("button", { name: "Set date", exact: true }).click();
   await page.locator(".event-set").click();
-  const time = await page.locator(".edit-time span").innerText();
+  const time = await page.locator(".big-clock").innerText();
   expect(time).toMatch(/^20:3[89]$/);
   await page.getByRole("button", { name: "Save place", exact: true }).click();
   await page.getByRole("button", { name: "Saved places", exact: true }).click();
@@ -28,11 +33,11 @@ test("mobile sundown plan, save and round-trip share without cookies or third-pa
   const link = await page.getByLabel("Share link").inputValue();
   expect(new URL(link).hash).toContain("at=");
   await page.goto(link);
-  await expect(page.locator(".edit-time span")).toHaveText(time);
+  await expect(page.locator(".big-clock")).toHaveText(time);
   await expect(page.getByRole("slider")).toBeVisible();
   await page.getByRole("slider").focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.locator(".edit-time span")).not.toHaveText(time);
+  await expect(page.locator(".big-clock")).not.toHaveText(time);
   expect(await context.cookies()).toEqual([]);
   expect([...origins]).toEqual(["http://127.0.0.1:8789"]);
   expect(errors).toEqual([]);
@@ -60,10 +65,19 @@ test("town, direct coordinates, polar night and offline revisit", async ({
   ).toBeVisible();
   await input.fill("69.65,18.96");
   await input.press("Enter");
-  await expect(page.locator(".place-tag")).toContainText("Pinned coordinates");
-  await page.getByLabel("Planning date", { exact: true }).fill("2026-12-21");
+  await expect(page.locator(".place-button")).toContainText(
+    "Pinned coordinates",
+  );
+  await page.getByRole("button", { name: "Choose planning date" }).click();
+  await page
+    .getByRole("dialog")
+    .locator('input[type="date"]')
+    .fill("2026-12-21");
+  await page.getByRole("button", { name: "Set date", exact: true }).click();
   await expect(page.locator(".event-rise")).toContainText("No event");
-  await expect(page.locator(".section-title small")).toHaveText("0h 00m");
+  await page.getByRole("button", { name: "More tools" }).click();
+  await expect(page.getByRole("dialog")).toContainText("0h 00m of daylight");
+  await page.keyboard.press("Escape");
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
     if (!navigator.serviceWorker.controller)
@@ -81,9 +95,11 @@ test("town, direct coordinates, polar night and offline revisit", async ({
     async () => (await fetch("/maps/split-waterfront.webp")).status,
   );
   expect(previewImage).toBe(200);
-  await expect(page.locator(".place-tag")).toContainText("Pinned coordinates");
+  await expect(page.locator(".place-button")).toContainText(
+    "Pinned coordinates",
+  );
   await expect(page.getByRole("slider")).toBeVisible();
-  await expect(page.locator(".topline")).toContainText("OFFLINE");
+  await expect(page.locator(".map-status")).toContainText("Offline");
 });
 test("an expired installation keeps today’s events and can reach restore", async ({
   page,

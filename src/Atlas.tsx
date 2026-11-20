@@ -2,27 +2,29 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { Map as GLMap } from "maplibre-gl";
 import { version } from "maplibre-gl/package.json";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { Plus, Minus, LocateFixed, WifiOff, Navigation } from "lucide-preact";
+import { atlasStyle, recolorAtlas } from "./map-style";
+import type { Scheme } from "./appearance";
 import {
-  Plus,
-  Minus,
-  LocateFixed,
-  MapPin,
-  Navigation,
-  Bookmark,
-} from "lucide-preact";
-import { atlasStyle } from "./map-style";
-import { type Spot, type SolarDay, sun, shadow, SPLIT } from "./solar";
+  type Spot,
+  type SolarDay,
+  sun,
+  shadow,
+  SPLIT,
+  direction,
+} from "./solar";
 type Props = {
   p: Spot;
   day: SolarDay;
   ms: number;
-  example: boolean;
+  offline: boolean;
+  scheme: Scheme;
   locked: boolean;
-  saved: boolean;
+
   shadowHeight: number | null;
   onPin: (p: Spot) => void;
   onGPS: () => void;
-  onSave: () => void;
+
   onMap: (map: GLMap | null) => void;
 };
 export default function Atlas(props: Props) {
@@ -31,6 +33,8 @@ export default function Atlas(props: Props) {
     map = useRef<GLMap | null>(null),
     current = useRef(props);
   current.current = props;
+  const paintedScheme = useRef<Scheme | null>(null);
+  const [mapWidth, setMapWidth] = useState(500);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null),
     [status, setStatus] = useState(""),
     [ready, setReady] = useState(false),
@@ -47,10 +51,12 @@ export default function Atlas(props: Props) {
           )) as typeof import("maplibre-gl");
         if (dead) return;
         gl.setWorkerUrl(root + "maplibre-gl-worker.mjs");
+        const scheme = current.current.scheme;
+        paintedScheme.current = scheme;
         const p = current.current.p,
           m = new gl.Map({
             container: node.current!,
-            style: atlasStyle(),
+            style: atlasStyle(scheme),
             center: [p.lon, p.lat],
             zoom: 15.05,
             minZoom: 1,
@@ -106,7 +112,11 @@ export default function Atlas(props: Props) {
             setPainted(true);
           project();
         });
-        m.on("resize", project);
+        m.on("resize", () => {
+          setMapWidth(node.current?.clientWidth ?? 500);
+          project();
+        });
+        setMapWidth(node.current?.clientWidth ?? 500);
         m.on("load", () => {
           if (dead) return;
           setReady(true);
@@ -178,10 +188,18 @@ export default function Atlas(props: Props) {
     setPos({ x: q.x, y: q.y });
     m.jumpTo({ center: [props.p.lon, props.p.lat] });
   }, [props.p.lat, props.p.lon]);
+  useEffect(() => {
+    const m = map.current;
+    if (ready && m && paintedScheme.current !== props.scheme) {
+      recolorAtlas(m, props.scheme);
+      paintedScheme.current = props.scheme;
+    }
+  }, [props.scheme, ready]);
   const d = props.day,
     p = props.p,
     now = sun(p, props.ms),
-    r = 94,
+    r = 89,
+    scale = Math.min(680, mapWidth * (mapWidth < 520 ? 0.97 : 0.66)) / 350,
     rad = (v: number) => (v * Math.PI) / 180,
     xy = (az: number, len: number) => [
       Math.sin(rad(az)) * len,
@@ -200,8 +218,7 @@ export default function Atlas(props: Props) {
           point(s.az, s.alt).join(","),
     )
     .join(" ");
-  const a = xy(now.az, r + 24),
-    pt = point(now.az, now.alt),
+  const a = xy(now.az, 106),
     length = props.shadowHeight ? shadow(props.shadowHeight, now.alt) : null,
     shadowPx =
       length === null
@@ -216,24 +233,6 @@ export default function Atlas(props: Props) {
       {!painted && p.lat === SPLIT.lat && p.lon === SPLIT.lon && (
         <div class="initial-map" aria-hidden="true" />
       )}
-      <div class="place-tag">
-        <span class="tag-icon">
-          <MapPin size={16} />
-        </span>
-        <div>
-          <small>
-            {props.example ? "EXAMPLE LOCATION" : "OBSERVATION POINT"}
-          </small>
-          <strong>{p.name}</strong>
-        </div>
-        <button
-          title={props.saved ? "Remove saved place" : "Save place"}
-          aria-label={props.saved ? "Remove saved place" : "Save place"}
-          onClick={props.onSave}
-        >
-          <Bookmark size={17} fill={props.saved ? "currentColor" : "none"} />
-        </button>
-      </div>
       <div class="north" aria-label="True north">
         N<Navigation size={18} fill="currentColor" />
       </div>
@@ -246,81 +245,56 @@ export default function Atlas(props: Props) {
             display: props.locked ? "none" : undefined,
           }}
         >
-          <circle
-            r={r}
-            fill="rgba(255,250,221,.14)"
-            stroke="#455e4f"
-            strokeOpacity=".55"
-            strokeWidth="1"
-          />
-          {Array.from({ length: 48 }, (_, i) => {
-            const major = i % 4 === 0;
-            const [x, y] = xy(i * 7.5, r),
-              [u, v] = xy(i * 7.5, r - (major ? 6 : 3));
-            return (
-              <line
-                x1={x}
-                y1={y}
-                x2={u}
-                y2={v}
-                stroke="#546657"
-                opacity={major ? 0.8 : 0.45}
-              />
-            );
-          })}
-          {["N", "E", "S", "W"].map((c, i) => {
-            const [x, y] = xy(i * 90, r + 12);
-            return (
-              <text x={x} y={y + 3} class="dial-letter">
-                {c}
+          <g
+            transform={`scale(${scale})`}
+            class="sun-dial"
+            data-down={now.alt <= 0 ? "true" : "false"}
+          >
+            <circle class="disc" r={r} />
+            <g class="dial-ticks">
+              {Array.from({ length: 36 }, (_, i) => {
+                const [x, y] = xy(i * 10, r),
+                  [u, v] = xy(i * 10, i % 3 === 0 ? 82 : 86);
+                return <path key={i} d={`M${x} ${y}L${u} ${v}`} />;
+              })}
+            </g>
+            <path class="skytrail" d={path} />
+            {rays.map((v) => {
+              const [x, y] = xy(sun(p, v.ms!).az, 97);
+              return (
+                <g key={v.id}>
+                  <path class="guide-ray" d={`M0 0L${x} ${y}`} />
+                  {mapWidth > 650 && (
+                    <text class="ray-label" x={x} y={y + (y > 0 ? 10 : -4)}>
+                      {v.id === "rise" ? "Sunrise" : "Sunset"}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            <g class="current-ray">
+              <path class="ray-edge" d={`M0 0L${a[0]} ${a[1]}`} />
+              <path class="ray" d={`M0 0L${a[0]} ${a[1]}`} />
+              <circle class="sun-dot" cx={a[0]} cy={a[1]} r="5.7" />
+            </g>
+            <g
+              class="bearing-tag"
+              transform={`translate(${a[0]} ${a[1] - 17})`}
+            >
+              <rect x="-25" y="-11" width="50" height="21" rx="10" />
+              <text y="3" text-anchor="middle">
+                {Math.round(now.az) % 360}° {direction(now.az)}
               </text>
-            );
-          })}
-          <path
-            d={path}
-            fill="none"
-            stroke="#c1781a"
-            strokeWidth="2"
-            strokeDasharray="3 3"
-          />
-          {rays.map((v) => {
-            const [x, y] = xy(sun(p, v.ms!).az, r + 44);
-            return (
-              <g>
-                <line
-                  x2={x}
-                  y2={y}
-                  stroke={v.id === "rise" ? "#9b6c17" : "#a65c30"}
-                  strokeWidth="1.6"
-                  strokeDasharray="5 4"
-                />
-                <text class="ray-label" x={x} y={y + (y > 0 ? 13 : -5)}>
-                  {v.id === "rise" ? "Sunrise" : "Sunset"}
-                </text>
-              </g>
-            );
-          })}
-          <line
-            x2={a[0]}
-            y2={a[1]}
-            stroke={now.alt >= 0 ? "#bc6c07" : "#566877"}
-            strokeWidth="2.5"
-            strokeDasharray={now.alt < 0 ? "4 4" : undefined}
-          />
-          <circle
-            cx={pt[0]}
-            cy={pt[1]}
-            r="7"
-            fill={now.alt >= 0 ? "#ffbc45" : "#748795"}
-            stroke="#fff9e9"
-            strokeWidth="2"
-          />
+            </g>
+            <circle class="pin" r="6" />
+            <circle class="pin-core" r="2" />
+          </g>
           {shadowPx !== null && (
             <g>
               <line
                 x2={end[0]}
                 y2={end[1]}
-                stroke="#344b54"
+                stroke="var(--mapLabel)"
                 strokeWidth="5"
                 strokeLinecap="round"
                 opacity=".72"
@@ -331,12 +305,12 @@ export default function Atlas(props: Props) {
               </text>
             </g>
           )}
-          <circle r="6.5" fill="#244b38" stroke="#fffbee" strokeWidth="2.5" />
         </g>
       </svg>
-      {status && (
+      {(status || props.offline) && (
         <div class="map-status" role="status">
-          {status}
+          {props.offline && <WifiOff size={15} />}{" "}
+          {props.offline ? "Offline · " + (status || "saved map") : status}
         </div>
       )}
       <div class="map-ctrl">

@@ -8,3 +8,5 @@ test-results/
 playwright-report/
 .cache/
 public/maps/lib/
+
+public/brand/palette.css

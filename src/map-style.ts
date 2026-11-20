@@ -1,63 +1,67 @@
-import type { StyleSpecification, LayerSpecification } from "maplibre-gl";
-export function atlasStyle(): StyleSpecification {
-  const light = "#f1efe4",
-    ink = "#706f62",
-    gold = "#ddba80",
-    src = "atlas";
+import type {
+  Map as GLMap,
+  StyleSpecification,
+  LayerSpecification,
+} from "maplibre-gl";
+import tokens from "./design/tokens.json";
+import type { Scheme } from "./appearance";
+export function atlasStyle(
+  scheme: Scheme,
+  origin = location.origin,
+): StyleSpecification {
+  const ix = scheme === "light" ? 0 : 1,
+    c = (k: keyof typeof tokens.colors) => tokens.colors[k][ix];
   const layer = (
     id: string,
     type: string,
     sl: string,
-    paint: any,
-    more: any = {},
-  ) =>
+    paint: Record<string, unknown>,
+    other: Record<string, unknown> = {},
+  ): LayerSpecification =>
     ({
       id,
       type,
-      source: src,
+      source: "atlas",
       "source-layer": sl,
       paint,
-      ...more,
+      ...other,
     }) as LayerSpecification;
   const name = ["coalesce", ["get", "name:en"], ["get", "name"]];
-  const text = (size: number, color: string) => ({
-    layout: {
-      "text-field": name,
-      "text-font": ["Noto Sans Regular"],
-      "text-size": size,
-      "text-max-width": 9,
-    },
-    paint: {
-      "text-color": color,
-      "text-halo-color": light,
-      "text-halo-width": 1.1,
-    },
-  });
-  const poi = text(10, "#677663"),
-    place = text(12, "#4e6053"),
-    road = text(10, ink);
+  const layout = {
+    "text-field": name,
+    "text-font": ["Noto Sans Regular"],
+    "text-size": 11,
+    "text-max-width": 9,
+  };
+  const text = {
+    "text-color": c("mapLabel"),
+    "text-halo-color": c("land"),
+    "text-halo-width": 1.2,
+  };
   return {
     version: 8,
-    glyphs: location.origin + "/maps/fonts/{fontstack}/{range}.pbf",
+    glyphs: origin + "/maps/fonts/{fontstack}/{range}.pbf",
     sources: {
       atlas: {
         type: "vector",
-        tiles: [location.origin + "/tiles/v1/{z}/{x}/{y}.mvt"],
+        tiles: [origin + "/tiles/v1/{z}/{x}/{y}.mvt"],
         maxzoom: 15,
       },
     },
     layers: [
-      { id: "paper", type: "background", paint: { "background-color": light } },
-      layer("earth", "fill", "earth", { "fill-color": light }),
+      {
+        id: "paper",
+        type: "background",
+        paint: { "background-color": c("land") },
+      },
+      layer("earth", "fill", "earth", { "fill-color": c("land") }),
       layer("cover", "fill", "landcover", {
         "fill-color": [
           "match",
           ["get", "kind"],
-          ["wood", "forest"],
-          "#cbd7bc",
-          ["grassland", "grass", "scrub"],
-          "#dce2cb",
-          "#e8e7d5",
+          ["wood", "forest", "grassland", "grass", "scrub"],
+          c("park"),
+          c("land"),
         ],
       }),
       layer("uses", "fill", "landuse", {
@@ -72,31 +76,44 @@ export function atlasStyle(): StyleSpecification {
             "garden",
             "grass",
             "recreation_ground",
+            "playground",
+            "pitch",
+            "dog_park",
           ],
-          "#d5dec5",
+          c("park"),
           ["pedestrian", "parking", "commercial", "industrial"],
-          "#e6e1d4",
-          "#e9e7db",
+          c("building"),
+          c("land"),
         ],
       }),
-      layer("sea", "fill", "water", { "fill-color": "#bcd5d2" }),
+      layer("sea", "fill", "water", { "fill-color": c("water") }),
       layer(
         "river",
         "line",
         "water",
-        { "line-color": "#adc9c6", "line-width": 1.4 },
+        { "line-color": c("water"), "line-width": 1.6 },
         { filter: ["==", ["geometry-type"], "LineString"] },
       ),
+      layer(
+        "piers",
+        "fill",
+        "landuse",
+        { "fill-color": c("land"), "fill-outline-color": c("buildingEdge") },
+        { filter: ["==", ["get", "kind"], "pier"] },
+      ),
       layer("country-boundaries", "line", "boundaries", {
-        "line-color": "#b5aea0",
-        "line-width": 0.85,
+        "line-color": c("mapGuide"),
+        "line-width": 0.8,
         "line-dasharray": [3, 3],
       }),
       layer(
         "buildings",
         "fill",
         "buildings",
-        { "fill-color": "#d9d2bf", "fill-outline-color": "#c6bfae" },
+        {
+          "fill-color": c("building"),
+          "fill-outline-color": c("buildingEdge"),
+        },
         { minzoom: 12 },
       ),
       layer(
@@ -104,23 +121,17 @@ export function atlasStyle(): StyleSpecification {
         "line",
         "roads",
         {
-          "line-color": [
-            "match",
-            ["get", "kind"],
-            ["highway", "major_road"],
-            gold,
-            "#d6ceba",
-          ],
+          "line-color": c("streetEdge"),
           "line-width": [
             "interpolate",
             ["linear"],
             ["zoom"],
             7,
-            0.7,
+            0.9,
             12,
-            1.8,
+            2.1,
             15,
-            4.2,
+            4.4,
             18,
             11,
           ],
@@ -132,39 +143,33 @@ export function atlasStyle(): StyleSpecification {
         "line",
         "roads",
         {
-          "line-color": [
-            "match",
-            ["get", "kind"],
-            ["highway", "major_road"],
-            "#f9e4b7",
-            "#fbf8ed",
-          ],
+          "line-color": c("street"),
           "line-width": [
             "interpolate",
             ["linear"],
             ["zoom"],
             7,
-            0.4,
+            0.45,
             12,
-            1,
+            1.1,
             15,
-            2.8,
+            3.2,
             18,
-            8,
+            8.5,
           ],
         },
         { layout: { "line-join": "round", "line-cap": "round" } },
       ),
-      layer("street-label", "symbol", "roads", road.paint, {
+      layer("street-label", "symbol", "roads", text, {
         minzoom: 13,
         layout: {
-          ...road.layout,
+          ...layout,
           "symbol-placement": "line",
           "text-rotation-alignment": "map",
-          "symbol-spacing": 220,
+          "symbol-spacing": 240,
         },
       }),
-      layer("poi-label", "symbol", "pois", poi.paint, {
+      layer("poi-label", "symbol", "pois", text, {
         minzoom: 14,
         filter: [
           "step",
@@ -190,11 +195,11 @@ export function atlasStyle(): StyleSpecification {
           17,
           true,
         ],
-        layout: { ...poi.layout, "text-padding": 7 },
+        layout: { ...layout, "text-size": 10, "text-padding": 7 },
       }),
-      layer("place-label", "symbol", "places", place.paint, {
+      layer("place-label", "symbol", "places", text, {
         layout: {
-          ...place.layout,
+          ...layout,
           "text-size": [
             "interpolate",
             ["linear"],
@@ -206,9 +211,23 @@ export function atlasStyle(): StyleSpecification {
             14,
             13,
           ],
-          "text-letter-spacing": 0.055,
+          "text-letter-spacing": 0.045,
         },
       }),
     ],
   };
+}
+// Only paint changes. Sources, requests, camera and the selected point are untouched.
+export function recolorAtlas(map: GLMap, scheme: Scheme) {
+  for (const layer of atlasStyle(scheme).layers) {
+    if (!map.getLayer(layer.id) || !("paint" in layer) || !layer.paint)
+      continue;
+    for (const [name, value] of Object.entries(layer.paint))
+      if (name.endsWith("color"))
+        map.setPaintProperty(
+          layer.id,
+          name as Parameters<GLMap["setPaintProperty"]>[1],
+          value,
+        );
+  }
 }

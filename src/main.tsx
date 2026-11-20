@@ -3,33 +3,30 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Map as GLMap } from "maplibre-gl";
 import {
   Sun,
-  Sunrise,
-  Sunset,
+  Contrast,
   Search,
   Bookmark,
   Share2,
-  ChevronLeft,
   ChevronRight,
   CalendarDays,
-  Compass,
   Layers2,
   ArrowUpRight,
-  Info,
   MapPin,
   LocateFixed,
   Check,
   Ruler,
-  Moon,
   ArrowRight,
 } from "lucide-preact";
 import Atlas from "./Atlas";
-import { Ribbon } from "./Ribbon";
+import { ClockFace } from "./ClockFace";
+import { ShadowRuler } from "./ShadowRuler";
+import { useAppearance } from "./appearance";
+import { Preferences } from "./Preferences";
+import { DateSheet, TimeSheet, HeightSheet } from "./PlanningSheets";
 import { Modal } from "./Modal";
 import {
   SPLIT,
-  T,
   clock,
-  local,
   solarDay,
   sun,
   zoneAt,
@@ -46,6 +43,11 @@ import { find, type Result } from "./search";
 import { settings, post, initialAccess, persist, type Access } from "./access";
 import "./style.css";
 type Panel =
+  | "settings"
+  | "more"
+  | "height"
+  | "date"
+  | "time"
   | "search"
   | "saved"
   | "share"
@@ -60,6 +62,7 @@ const fmtDate = (date: string, opts: Intl.DateTimeFormatOptions) =>
   );
 const numeric = (n: number) => n.toFixed(4);
 function App() {
+  const appearance = useAppearance();
   const boot = useMemo(initial, []),
     [p, setP] = useState(boot.p),
     [ms, setMs] = useState(boot.ms),
@@ -76,7 +79,10 @@ function App() {
     [lookup, setLookup] = useState(false),
     [searchState, setSearchState] = useState("");
   const [showShadow, setShowShadow] = useState(false),
-    [height, setHeight] = useState(() => read<number>("height", 2)),
+    [height, setHeight] = useState(() => {
+      const h = read<number>("height", 2);
+      return Number.isFinite(h) && h >= 0.1 && h <= 10000 ? h : 2;
+    }),
     [access, setAccess] = useState<Access>(initialAccess),
     [recovery, setRecovery] = useState(""),
     [busy, setBusy] = useState(false);
@@ -336,8 +342,6 @@ function App() {
       numeric(Math.abs(p.lon)) +
       "° " +
       (p.lon >= 0 ? "E" : "W");
-  const getEvent = (id: string) => d.events.find((v) => v.key === id)!,
-    events = ["rise", "noon", "set"].map(getEvent);
   const compare = useMemo(
     () =>
       panel === "compare"
@@ -364,227 +368,113 @@ function App() {
     );
   return (
     <>
-      <header class="mast">
-        <a class="identity" href="/" aria-label="SunCalc home">
-          <span class="brand-mark">
-            <Sun size={28} strokeWidth={1.65} />
-          </span>
-          <span>
-            SunCalc<span class="brand-dot">.</span>
-          </span>
-        </a>
-        <span class="mast-rule" />
-        <span class="subtitle">The daylight atlas</span>
-        <button class="search-trigger" onClick={() => open("search")}>
-          <Search size={17} />
-          <span>Find a place or coordinates</span>
-          <kbd>⌘ K</kbd>
-        </button>
-        <nav>
-          <button
-            title="Saved places"
-            aria-label="Saved places"
-            onClick={() => openTool("saved")}
-          >
-            <Bookmark size={17} />
-            <span>Saved</span>
-          </button>
-          <button
-            class="sharebtn"
-            aria-label="Share plan"
-            onClick={() => open("share")}
-          >
-            <Share2 size={16} />
-            <span>Share</span>
-          </button>
-        </nav>
-      </header>
-      <main>
-        <div class="topline">
-          <span>
-            <i /> SOLAR ATLAS <b>/</b> FIELD VIEW
-          </span>
-          <span>
-            {offline ? "OFFLINE" : "TRUE NORTH"}{" "}
-            <span class="coord-dot">·</span> WGS 84
-          </span>
-        </div>
-        <div class="workbench">
-          <div class="mapcolumn">
-            <Atlas
-              p={p}
-              day={d}
-              ms={ms}
-              example={example}
-              saved={isSaved}
-              shadowHeight={showShadow ? height : null}
-              locked={locked}
-              onGPS={gps}
-              onPin={pick}
-              onSave={save}
-              onMap={(m) => {
-                map.current = m;
-              }}
+      <a
+        class="skip"
+        href="#planner-content"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("planner-content")?.focus();
+        }}
+      >
+        Skip to planner
+      </a>
+      <main class="planner" id="planner-content" tabIndex={-1}>
+        <header class="appbar">
+          <a class="logo-link" href="/" aria-label="SunCalc home">
+            <img
+              class="brand-tile"
+              src="/icon.svg"
+              alt=""
+              width="41"
+              height="41"
             />
-            {locked ? (
-              <div class="locked">
-                <strong>Your free month has ended.</strong>
-                <p>Today’s sunrise and sunset are always yours.</p>
-                <button class="primary" onClick={() => open("access")}>
-                  Unlock the planner · €1
-                </button>
-              </div>
-            ) : (
-              <Ribbon
-                day={d}
-                ms={ms}
-                onChange={time}
-                onNow={() => time(Date.now())}
-                onDate={dateTo}
-                locked={locked}
-              />
-            )}
+            <span class="wordmark" aria-hidden="true" />
+          </a>
+          <nav aria-label="Planner tools">
+            <button
+              class="action"
+              aria-label="Find a place or coordinates"
+              title="Find a place"
+              onClick={() => open("search")}
+            >
+              <Search size={20} />
+              <span>Find place</span>
+            </button>
+            <button
+              class="action"
+              aria-label="Saved places"
+              title="Saved places"
+              onClick={() => openTool("saved")}
+            >
+              <Bookmark size={19} />
+              <span>Saved places</span>
+            </button>
+            <button
+              class="action"
+              aria-label="Share plan"
+              title="Share plan"
+              onClick={() => open("share")}
+            >
+              <Share2 size={19} />
+              <span>Share plan</span>
+            </button>
+            <button
+              class="action"
+              aria-label="Appearance and settings"
+              title="Appearance and settings"
+              onClick={() => open("settings")}
+            >
+              <Contrast size={20} />
+            </button>
+          </nav>
+        </header>
+        <ClockFace
+          spot={p}
+          day={d}
+          ms={ms}
+          current={current}
+          example={example}
+          saved={isSaved}
+          locked={locked}
+          pick={() => open("search")}
+          save={save}
+          date={() => openTool("date")}
+          time={() => openTool("time")}
+          change={time}
+          access={() => open("access")}
+        />
+        <Atlas
+          p={p}
+          day={d}
+          ms={ms}
+          offline={offline}
+          scheme={appearance.scheme}
+          shadowHeight={showShadow && !locked ? height : null}
+          locked={locked}
+          onGPS={gps}
+          onPin={pick}
+          onMap={(m) => {
+            map.current = m;
+          }}
+        />
+        {!locked ? (
+          <ShadowRuler
+            height={height}
+            length={sh}
+            az={current.az}
+            edit={() => openTool("height")}
+            more={() => openTool("more")}
+          />
+        ) : (
+          <div class="shadowcard locked-basics">
+            <span class="over">At this pin</span>
+            <p>{duration(d.light)} of daylight today.</p>
+            <button class="chip" onClick={() => open("access")}>
+              Access &amp; restore
+            </button>
           </div>
-          <aside class="inspector">
-            <div class="sidehead">
-              <span class="kicker">
-                <span class="live-dot" /> AT THE PIN
-              </span>
-              <button
-                class="icon"
-                title="About the atlas"
-                aria-label="About the atlas"
-                onClick={() => open("about")}
-              >
-                <Info size={16} />
-              </button>
-            </div>
-            <div class="date-row">
-              <label class="date-label" title="Choose date">
-                <span>{fmtDate(date, { month: "long", day: "numeric" })}</span>
-                <input
-                  aria-label="Planning date"
-                  type="date"
-                  min="1900-01-01"
-                  max="2100-12-31"
-                  value={date}
-                  disabled={locked}
-                  onInput={(e) => dateTo(e.currentTarget.value)}
-                />
-              </label>
-              <div class="date-arrows">
-                <button
-                  aria-label="Previous day"
-                  disabled={locked}
-                  onClick={() =>
-                    dateTo(
-                      T.PlainDate.from(date).subtract({ days: 1 }).toString(),
-                    )
-                  }
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  aria-label="Next day"
-                  disabled={locked}
-                  onClick={() =>
-                    dateTo(T.PlainDate.from(date).add({ days: 1 }).toString())
-                  }
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-            <p class="muted date-sub">
-              {fmtDate(date, { weekday: "long" })}, {date.slice(0, 4)}{" "}
-              <span>·</span> {zone.replaceAll("_", " ")}
-            </p>
-            {!locked && (
-              <div class="position">
-                <div class="position-title">
-                  {current.alt < 0 ? <Moon size={15} /> : <Sun size={16} />}{" "}
-                  {current.alt < 0
-                    ? "Below the horizon"
-                    : "Sun above the horizon"}
-                </div>
-                <div class="metrics">
-                  <div>
-                    <small>Azimuth</small>
-                    <strong>
-                      {Math.round(current.az) % 360}°{" "}
-                      <em>{direction(current.az)}</em>
-                    </strong>
-                  </div>
-                  <div>
-                    <small>Altitude</small>
-                    <strong>{current.alt.toFixed(1)}°</strong>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div class="section-title">
-              <span>Daylight</span>
-              <small>{duration(d.light)}</small>
-            </div>
-            <div class="events">
-              {events
-                .filter((v) => !locked || v.key !== "noon")
-                .map((v) => {
-                  const Icon =
-                    v.key === "rise" ? Sunrise : v.key === "set" ? Sunset : Sun;
-                  return (
-                    <button
-                      class={"event event-" + v.key}
-                      disabled={locked || v.ms === null}
-                      onClick={() => v.ms !== null && time(v.ms)}
-                    >
-                      <span class="eventicon">
-                        <Icon size={19} strokeWidth={1.55} />
-                      </span>
-                      <span>{v.label}</span>
-                      <strong>
-                        {v.ms !== null ? clock(v.ms, zone) : "No event"}
-                      </strong>
-                    </button>
-                  );
-                })}
-            </div>
-            {!locked && (
-              <div class="tools">
-                <button onClick={() => openTool("compare")}>
-                  <Layers2 size={17} />
-                  <span>Compare seasons</span>
-                  <ChevronRight size={14} />
-                </button>
-                <button onClick={() => openTool("details")}>
-                  <Ruler size={17} />
-                  <span>Shadow & light details</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            )}
-            <div class="coord">
-              <Compass size={14} /> {coord}
-            </div>
-          </aside>
-        </div>
+        )}
       </main>
-      <footer>
-        <span>
-          <Sun size={14} /> SunCalc <b>/</b> A daylight atlas
-        </span>
-        <div>
-          <button onClick={() => open("about")}>About & privacy</button>
-          <i>·</i>
-          <button onClick={() => open("access")}>
-            {access.paid
-              ? "Lifetime access"
-              : access.mode === "preview"
-                ? "Free preview"
-                : "Access & restore"}
-          </button>
-        </div>
-      </footer>
       {notice && !panel && (
         <div class="toast" role="status">
           {notice}
@@ -598,9 +488,13 @@ function App() {
       )}
       {panel && (
         <Modal
-          key={panel}
           title={
             {
+              settings: "Appearance & settings",
+              more: "At this pin",
+              date: "Planning date",
+              time: "Local time",
+              height: "Object height",
               search: "Find a place",
               saved: "Saved places",
               share: "Share this moment",
@@ -612,12 +506,80 @@ function App() {
           }
           onClose={() => open(null)}
         >
+          {panel === "settings" && (
+            <Preferences
+              appearance={appearance}
+              access={() => open("access")}
+              about={() => open("about")}
+            />
+          )}
+          {panel === "date" && (
+            <DateSheet
+              day={date}
+              zone={zone}
+              set={(v) => {
+                dateTo(v);
+                open(null);
+              }}
+            />
+          )}
+          {panel === "time" && (
+            <TimeSheet
+              ms={ms}
+              zone={zone}
+              set={(v) => {
+                time(v);
+                open(null);
+              }}
+            />
+          )}
+          {panel === "height" && (
+            <HeightSheet
+              height={height}
+              set={(v) => {
+                setHeight(v);
+                write("height", v);
+                open(null);
+              }}
+            />
+          )}
+          {panel === "more" && (
+            <>
+              <p class="muted">
+                <strong>{p.name}</strong> · {duration(d.light)} of daylight.
+                <br />
+                {coord} · {zone.replaceAll("_", " ")}
+              </p>
+              <button class="result" onClick={() => openTool("compare")}>
+                <Layers2 size={18} />
+                <span>Compare seasons</span>
+                <ChevronRight size={16} />
+              </button>
+              <button class="result" onClick={() => openTool("details")}>
+                <Ruler size={18} />
+                <span>Shadow &amp; light details</span>
+                <ChevronRight size={16} />
+              </button>
+              <button
+                class="result"
+                onClick={() => {
+                  time(Date.now());
+                  open(null);
+                }}
+              >
+                <Sun size={18} />
+                <span>Return to now</span>
+                <ChevronRight size={16} />
+              </button>
+            </>
+          )}
           {panel === "search" && (
             <>
               <label class="query">
                 <Search size={18} />
                 <input
                   ref={searchInput}
+                  data-autofocus
                   placeholder="Town, street on this map, or coordinates"
                   aria-label="Search places"
                   value={query}
@@ -628,7 +590,10 @@ function App() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       const direct = coordinates(e.currentTarget.value);
-                      if (direct || results[0]) pick(direct ?? results[0]);
+                      if (direct || results[0]) {
+                        e.preventDefault();
+                        pick(direct ?? results[0]);
+                      }
                     }
                   }}
                 />
@@ -845,7 +810,9 @@ function App() {
                 </a>{" "}
                 · Protomaps · Natural Earth ·{" "}
                 <a href="https://www.geonames.org/">GeoNames (CC BY 4.0)</a> ·
-                time zones from timezone-boundary-builder · Astronomy Engine.
+                time zones from timezone-boundary-builder · Astronomy Engine ·
+                Bricolage Grotesque (
+                <a href="/brand/OFL.txt">SIL Open Font License</a>).
               </p>
             </>
           )}

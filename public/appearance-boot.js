@@ -1,0 +1,2 @@
+// Blocking, same-origin script allowed by the planner's CSP. No storage is required.
+(()=>{const m=document.querySelector('meta[name="color-scheme"]');try{const v=localStorage.getItem('suncalc:appearance');if(v==='light'||v==='dark')m.content=v}catch{}const dark=m.content==='dark'||(m.content==='light dark'&&matchMedia('(prefers-color-scheme:dark)').matches);document.querySelector('meta[name="theme-color"]').content=dark?'#151728':'#F8F6EC'})();

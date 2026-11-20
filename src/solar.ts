@@ -1,8 +1,8 @@
+import { sun } from "./sun-position";
+export { sun } from "./sun-position";
 import {
   Body,
   Observer,
-  Equator,
-  Horizon,
   SearchAltitude,
   SearchRiseSet,
   SearchHourAngle,
@@ -46,13 +46,6 @@ export function clock(ms: number, zone: string) {
   return (
     String(t.hour).padStart(2, "0") + ":" + String(t.minute).padStart(2, "0")
   );
-}
-export function sun(p: Spot, ms: number) {
-  const date = new Date(ms),
-    obs = new Observer(p.lat, p.lon, 0),
-    e = Equator(Body.Sun, date, obs, true, true),
-    h = Horizon(date, obs, e.ra, e.dec, "normal");
-  return { az: h.azimuth, alt: h.altitude };
 }
 export const direction = (az: number) =>
   [
