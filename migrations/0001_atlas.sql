@@ -1,0 +1,4 @@
+CREATE TABLE installs (id TEXT PRIMARY KEY, started INTEGER NOT NULL, paid INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE orders (ref TEXT PRIMARY KEY, install TEXT NOT NULL REFERENCES installs(id), checkout TEXT UNIQUE, paid INTEGER NOT NULL DEFAULT 0, recovery_hash TEXT UNIQUE);
+CREATE INDEX orders_by_install ON orders(install);
+CREATE TABLE address_budget (day TEXT PRIMARY KEY, used INTEGER NOT NULL DEFAULT 0);

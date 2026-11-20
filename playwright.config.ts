@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./tests/browser',timeout:35000,workers:2,use:{baseURL:'http://127.0.0.1:8789',launchOptions:{executablePath:process.env.CHROME_BIN||undefined,args:['--enable-unsafe-swiftshader','--use-angle=swiftshader']}},webServer:{command:'npm run preview',url:'http://127.0.0.1:8789/api/config',reuseExistingServer:true,timeout:55000}});

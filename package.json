@@ -1,0 +1,35 @@
+{
+  "name": "suncalc-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/service-worker.mjs",
+    "preview": "wrangler dev --local --port 8789",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "playwright test",
+    "data:towns": "python3 scripts/towns.py",
+    "prebuild": "node scripts/map-lib.mjs",
+    "predev": "node scripts/map-lib.mjs",
+    "ci": "npm test && npm run build"
+  },
+  "dependencies": {
+    "@photostructure/tz-lookup": "^11.8.0",
+    "astronomy-engine": "^2.1.19",
+    "lucide-preact": "^1.77.0",
+    "maplibre-gl": "^6.19.0",
+    "pmtiles": "^4.5.0",
+    "preact": "^11.2.0",
+    "temporal-polyfill": "^1.0.8",
+    "vite": "^7.3.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261120.1",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.165.0"
+  }
+}
