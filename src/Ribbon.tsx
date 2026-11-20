@@ -1,14 +1,188 @@
-import {CalendarDays,Clock3,RotateCcw} from 'lucide-preact';
-import {clock,local,type SolarDay} from './solar';
-export function Ribbon({day:d,ms,onChange,onNow,onDate,locked}:{day:SolarDay;ms:number;onChange:(n:number)=>void;onNow:()=>void;onDate:(date:string)=>void;locked:boolean}){
- const span=d.end-d.start,val=Math.max(0,Math.min(Math.floor(span/60000)-1,Math.round((ms-d.start)/60000))),pct=val*60000/span*100;
- const x=(ms:number)=>(ms-d.start)/span*1000, y=(alt:number)=>52-Math.max(-18,alt)*.59;
- const graph=d.path.map((p,i)=>(i?'L':'M')+x(p.ms).toFixed(1)+','+y(p.alt).toFixed(1)).join(' ');
- const ticks=[];for(let t=d.start;t<d.end;t+=3600000){const h=local(t,d.zone).hour;if(h%3===0)ticks.push({t,h})}
- return <section class="ribbon" aria-label="Daylight timeline"><div class="ribbon-head"><div><span class="kicker"><span class="amber-line"/> DAYLIGHT TIMELINE</span><div class="time-read"><label class="edit-time" title="Enter local time"><span>{clock(ms,d.zone)}</span><input type="time" aria-label="Enter local time" disabled={locked} value={clock(ms,d.zone)} onInput={e=>{const v=e.currentTarget.value;if(v){const [h,m]=v.split(':').map(Number);onChange(local(ms,d.zone).with({hour:h,minute:m,second:0,millisecond:0}).epochMilliseconds)}}}/></label><span class="zone-short">UTC{local(ms,d.zone).offset.replace(':00','')}</span></div></div><div class="ribbon-tools"><label class="chip mobile-day"><CalendarDays size={13}/>{local(ms,d.zone).month}/{local(ms,d.zone).day}<input aria-label="Timeline date" type="date" value={d.day} min="1900-01-01" max="2100-12-31" onInput={e=>onDate(e.currentTarget.value)}/></label><span class="scrub-tip">Drag to explore the day</span><button class="chip" disabled={locked} onClick={onNow}><RotateCcw size={13}/> Now</button></div></div>
- <div class="chart"><svg preserveAspectRatio="none" viewBox="0 0 1000 68" aria-hidden="true"><defs><linearGradient id="light" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#eeb357" stop-opacity=".58"/><stop offset="1" stop-color="#efd3a2" stop-opacity=".12"/></linearGradient><clipPath id="above"><rect width="1000" height="52"/></clipPath></defs>
- {ticks.map(t=><line x1={x(t.t)} x2={x(t.t)} y1="3" y2="65" stroke="#dcdccc" strokeDasharray="2 5"/>)}<path d={graph+' L1000,67 L0,67 Z'} fill="url(#light)" clip-path="url(#above)"/><path d={graph} fill="none" stroke="#89968a" strokeWidth="1.3" vector-effect="non-scaling-stroke"/><path d={graph} fill="none" stroke="#b8761d" strokeWidth="1.9" clip-path="url(#above)" vector-effect="non-scaling-stroke"/><line x2="1000" y1="52" y2="52" stroke="#b4b8a6" strokeDasharray="3 4"/></svg>
- <div class="time-line" style={{left:pct+'%'}}/><input type="range" aria-label="Time of day" aria-valuetext={clock(ms,d.zone)+' at the pin'} disabled={locked} min="0" max={Math.floor(span/60000)-1} step="1" value={val} onInput={e=>onChange(d.start+Number(e.currentTarget.value)*60000)}/></div>
- <div class="ticks">{ticks.map(t=><span style={{left:x(t.t)/10+'%'}}>{String(t.h).padStart(2,'0')}</span>)}<span class="last-tick">24</span></div>
- <div class="ribbon-stops">{d.events.filter(v=>['rise','noon','set'].includes(v.key)&&v.ms!==null).map(v=><button onClick={()=>onChange(v.ms!)}>{v.label} <b>{clock(v.ms!,d.zone)}</b></button>)}</div><span class="sr"><Clock3/>Times are local to {d.zone}.</span></section>
+import { CalendarDays, Clock3, RotateCcw } from "lucide-preact";
+import { clock, local, type SolarDay } from "./solar";
+export function Ribbon({
+  day: d,
+  ms,
+  onChange,
+  onNow,
+  onDate,
+  locked,
+}: {
+  day: SolarDay;
+  ms: number;
+  onChange: (n: number) => void;
+  onNow: () => void;
+  onDate: (date: string) => void;
+  locked: boolean;
+}) {
+  const span = d.end - d.start,
+    val = Math.max(
+      0,
+      Math.min(
+        Math.floor(span / 60000) - 1,
+        Math.round((ms - d.start) / 60000),
+      ),
+    ),
+    pct = ((val * 60000) / span) * 100;
+  const x = (ms: number) => ((ms - d.start) / span) * 1000,
+    y = (alt: number) => 52 - Math.max(-18, alt) * 0.59;
+  const graph = d.path
+    .map(
+      (p, i) =>
+        (i ? "L" : "M") + x(p.ms).toFixed(1) + "," + y(p.alt).toFixed(1),
+    )
+    .join(" ");
+  const ticks = [];
+  for (let t = d.start; t < d.end; t += 3600000) {
+    const h = local(t, d.zone).hour;
+    if (h % 3 === 0) ticks.push({ t, h });
+  }
+  return (
+    <section class="ribbon" aria-label="Daylight timeline">
+      <div class="ribbon-head">
+        <div>
+          <span class="kicker">
+            <span class="amber-line" /> DAYLIGHT TIMELINE
+          </span>
+          <div class="time-read">
+            <label class="edit-time" title="Enter local time">
+              <span>{clock(ms, d.zone)}</span>
+              <input
+                type="time"
+                aria-label="Enter local time"
+                disabled={locked}
+                value={clock(ms, d.zone)}
+                onInput={(e) => {
+                  const v = e.currentTarget.value;
+                  if (v) {
+                    const [h, m] = v.split(":").map(Number);
+                    onChange(
+                      local(ms, d.zone).with({
+                        hour: h,
+                        minute: m,
+                        second: 0,
+                        millisecond: 0,
+                      }).epochMilliseconds,
+                    );
+                  }
+                }}
+              />
+            </label>
+            <span class="zone-short">
+              UTC{local(ms, d.zone).offset.replace(":00", "")}
+            </span>
+          </div>
+        </div>
+        <div class="ribbon-tools">
+          <label class="chip mobile-day">
+            <CalendarDays size={13} />
+            {local(ms, d.zone).month}/{local(ms, d.zone).day}
+            <input
+              aria-label="Timeline date"
+              type="date"
+              value={d.day}
+              min="1900-01-01"
+              max="2100-12-31"
+              onInput={(e) => onDate(e.currentTarget.value)}
+            />
+          </label>
+          <span class="scrub-tip">Drag to explore the day</span>
+          <button class="chip" disabled={locked} onClick={onNow}>
+            <RotateCcw size={13} /> Now
+          </button>
+        </div>
+      </div>
+      <div class="chart">
+        <svg
+          preserveAspectRatio="none"
+          viewBox="0 0 1000 68"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="light" x1="0" y1="0" x2="0" y2="1">
+              <stop stop-color="#eeb357" stop-opacity=".58" />
+              <stop offset="1" stop-color="#efd3a2" stop-opacity=".12" />
+            </linearGradient>
+            <clipPath id="above">
+              <rect width="1000" height="52" />
+            </clipPath>
+          </defs>
+          {ticks.map((t) => (
+            <line
+              x1={x(t.t)}
+              x2={x(t.t)}
+              y1="3"
+              y2="65"
+              stroke="#dcdccc"
+              strokeDasharray="2 5"
+            />
+          ))}
+          <path
+            d={graph + " L1000,67 L0,67 Z"}
+            fill="url(#light)"
+            clip-path="url(#above)"
+          />
+          <path
+            d={graph}
+            fill="none"
+            stroke="#89968a"
+            strokeWidth="1.3"
+            vector-effect="non-scaling-stroke"
+          />
+          <path
+            d={graph}
+            fill="none"
+            stroke="#b8761d"
+            strokeWidth="1.9"
+            clip-path="url(#above)"
+            vector-effect="non-scaling-stroke"
+          />
+          <line
+            x2="1000"
+            y1="52"
+            y2="52"
+            stroke="#b4b8a6"
+            strokeDasharray="3 4"
+          />
+        </svg>
+        <div class="time-line" style={{ left: pct + "%" }} />
+        <input
+          type="range"
+          aria-label="Time of day"
+          aria-valuetext={clock(ms, d.zone) + " at the pin"}
+          disabled={locked}
+          min="0"
+          max={Math.floor(span / 60000) - 1}
+          step="1"
+          value={val}
+          onInput={(e) =>
+            onChange(d.start + Number(e.currentTarget.value) * 60000)
+          }
+        />
+      </div>
+      <div class="ticks">
+        {ticks.map((t) => (
+          <span style={{ left: x(t.t) / 10 + "%" }}>
+            {String(t.h).padStart(2, "0")}
+          </span>
+        ))}
+        <span class="last-tick">24</span>
+      </div>
+      <div class="ribbon-stops">
+        {d.events
+          .filter(
+            (v) => ["rise", "noon", "set"].includes(v.key) && v.ms !== null,
+          )
+          .map((v) => (
+            <button onClick={() => onChange(v.ms!)}>
+              {v.label} <b>{clock(v.ms!, d.zone)}</b>
+            </button>
+          ))}
+      </div>
+      <span class="sr">
+        <Clock3 />
+        Times are local to {d.zone}.
+      </span>
+    </section>
+  );
 }

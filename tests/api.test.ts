@@ -1,8 +1,126 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
-import {api,type Env} from '../worker/api';
-function fixture(){const sql=new DatabaseSync(':memory:');sql.exec(readFileSync(new URL('../migrations/0001_atlas.sql',import.meta.url),'utf8'));const db={prepare(s:string){const q=sql.prepare(s);return{bind(...args:any[]){return{first:async()=>q.get(...args),run:async()=>q.run(...args)}}}},batch:async(q:any[])=>{sql.exec('BEGIN');try{const a=await Promise.all(q.map(x=>x.run()));sql.exec('COMMIT');return a}catch(e){sql.exec('ROLLBACK');throw e}}};const env={DB:db,BILLING_MODE:'live',SUMUP_KEY:'test',SUMUP_MERCHANT:'merchant',RECOVERY_SECRET:'fixture'} as unknown as Env;
-const token=crypto.randomUUID();const run=async(route:string,body:object={},id=token)=>{const res=await api(new Request('https://suncalc.app/api/'+route,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+id},body:JSON.stringify(body)}),env);return{status:res.status,body:await res.json() as any}};return{sql,env,run}}
-test('preview neither registers nor charges, even if checkout is called',async()=>{const f=fixture();f.env.BILLING_MODE='preview';assert.equal((await f.run('checkout')).body.mode,'preview');assert.equal(f.sql.prepare('SELECT count(*) n FROM installs').get()?.n,0)});
-test('trial is stable; payment must be verified; recovery works without an email',async(t)=>{const f=fixture();let ref='',state='PENDING';t.mock.method(globalThis,'fetch',async(_u:any,o:any)=>{if(o.method==='POST'){ref=JSON.parse(o.body).checkout_reference;return Response.json({id:'checkout',hosted_checkout_url:'https://checkout.sumup.com/pay/test'})}return Response.json({status:state,amount:1,currency:'EUR',merchant_code:'merchant',checkout_reference:ref})});
-const trial=(await f.run('start')).body;assert.ok(Math.abs(trial.until-Date.now()-30*86400000)<2000);assert.deepEqual((await f.run('start')).body,trial);await f.run('checkout');assert.equal((await f.run('confirm',{ref})).body.pending,true);assert.equal((await f.run('status')).body.paid,false);state='PAID';const paid=(await f.run('confirm',{ref})).body;assert.match(paid.recovery,/^[0-9a-f]{32}$/);assert.deepEqual((await f.run('confirm',{ref})).body,paid);const other=crypto.randomUUID();await f.run('start',{},other);assert.equal((await f.run('restore',{code:'0'.repeat(32)},other)).status,404);assert.equal((await f.run('restore',{code:paid.recovery},other)).body.paid,true);assert.equal((await f.run('status',{},other)).body.paid,true)});
-test('address quota is atomic and outbound lookup contains only the submitted query',async(t)=>{const f=fixture();f.env.GEOAPIFY_KEY='test';let calls=0;t.mock.method(globalThis,'fetch',async(url:URL,o:RequestInit)=>{calls++;assert.equal(url.searchParams.get('text'),'Split');assert.equal(url.searchParams.has('bias'),false);assert.equal(o.headers,undefined);return Response.json({results:[]})});await f.run('address',{q:'Split'});f.sql.exec('UPDATE address_budget SET used=3000');assert.equal((await f.run('address',{q:'Split'})).status,429);assert.equal(calls,1);assert.equal(f.sql.prepare('SELECT count(*) n FROM installs').get()?.n,0)});
+import test from "node:test";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
+import { api, type Env } from "../worker/api";
+function fixture() {
+  const sql = new DatabaseSync(":memory:");
+  sql.exec(
+    readFileSync(
+      new URL("../migrations/0001_atlas.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  const db = {
+    prepare(s: string) {
+      const q = sql.prepare(s);
+      return {
+        bind(...args: any[]) {
+          return {
+            first: async () => q.get(...args),
+            run: async () => q.run(...args),
+          };
+        },
+      };
+    },
+    batch: async (q: any[]) => {
+      sql.exec("BEGIN");
+      try {
+        const a = await Promise.all(q.map((x) => x.run()));
+        sql.exec("COMMIT");
+        return a;
+      } catch (e) {
+        sql.exec("ROLLBACK");
+        throw e;
+      }
+    },
+  };
+  const env = {
+    DB: db,
+    BILLING_MODE: "live",
+    SUMUP_KEY: "test",
+    SUMUP_MERCHANT: "merchant",
+    RECOVERY_SECRET: "fixture",
+  } as unknown as Env;
+  const token = crypto.randomUUID();
+  const run = async (route: string, body: object = {}, id = token) => {
+    const res = await api(
+      new Request("https://suncalc.app/api/" + route, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + id,
+        },
+        body: JSON.stringify(body),
+      }),
+      env,
+    );
+    return { status: res.status, body: (await res.json()) as any };
+  };
+  return { sql, env, run };
+}
+test("preview neither registers nor charges, even if checkout is called", async () => {
+  const f = fixture();
+  f.env.BILLING_MODE = "preview";
+  assert.equal((await f.run("checkout")).body.mode, "preview");
+  assert.equal(f.sql.prepare("SELECT count(*) n FROM installs").get()?.n, 0);
+});
+test("trial is stable; payment must be verified; recovery works without an email", async (t) => {
+  const f = fixture();
+  let ref = "",
+    state = "PENDING";
+  t.mock.method(globalThis, "fetch", async (_u: any, o: any) => {
+    if (o.method === "POST") {
+      ref = JSON.parse(o.body).checkout_reference;
+      return Response.json({
+        id: "checkout",
+        hosted_checkout_url: "https://checkout.sumup.com/pay/test",
+      });
+    }
+    return Response.json({
+      status: state,
+      amount: 1,
+      currency: "EUR",
+      merchant_code: "merchant",
+      checkout_reference: ref,
+    });
+  });
+  const trial = (await f.run("start")).body;
+  assert.ok(Math.abs(trial.until - Date.now() - 30 * 86400000) < 2000);
+  assert.deepEqual((await f.run("start")).body, trial);
+  await f.run("checkout");
+  assert.equal((await f.run("confirm", { ref })).body.pending, true);
+  assert.equal((await f.run("status")).body.paid, false);
+  state = "PAID";
+  const paid = (await f.run("confirm", { ref })).body;
+  assert.match(paid.recovery, /^[0-9a-f]{32}$/);
+  assert.deepEqual((await f.run("confirm", { ref })).body, paid);
+  const other = crypto.randomUUID();
+  await f.run("start", {}, other);
+  assert.equal(
+    (await f.run("restore", { code: "0".repeat(32) }, other)).status,
+    404,
+  );
+  assert.equal(
+    (await f.run("restore", { code: paid.recovery }, other)).body.paid,
+    true,
+  );
+  assert.equal((await f.run("status", {}, other)).body.paid, true);
+});
+test("address quota is atomic and outbound lookup contains only the submitted query", async (t) => {
+  const f = fixture();
+  f.env.GEOAPIFY_KEY = "test";
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async (url: URL, o: RequestInit) => {
+    calls++;
+    assert.equal(url.searchParams.get("text"), "Split");
+    assert.equal(url.searchParams.has("bias"), false);
+    assert.equal(o.headers, undefined);
+    return Response.json({ results: [] });
+  });
+  await f.run("address", { q: "Split" });
+  f.sql.exec("UPDATE address_budget SET used=3000");
+  assert.equal((await f.run("address", { q: "Split" })).status, 429);
+  assert.equal(calls, 1);
+  assert.equal(f.sql.prepare("SELECT count(*) n FROM installs").get()?.n, 0);
+});
