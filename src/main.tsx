@@ -84,15 +84,15 @@ function App() {
     trial = useRef<Promise<void> | null>(null),
     searchInput = useRef<HTMLInputElement>(null),
     addressGeneration = useRef(0);
+  const locked =
+    access.mode === "live" &&
+    !access.paid &&
+    !!access.until &&
+    access.until <= Date.now();
   const zone = useMemo(() => zoneAt(p), [p.lat, p.lon]),
-    date = dayAt(ms, zone),
+    date = dayAt(locked ? Date.now() : ms, zone),
     d = useMemo(() => solarDay(p, date, zone), [p.lat, p.lon, date, zone]),
-    current = useMemo(() => sun(p, ms), [p.lat, p.lon, ms]),
-    locked =
-      access.mode === "live" &&
-      !access.paid &&
-      !!access.until &&
-      access.until <= Date.now();
+    current = useMemo(() => sun(p, ms), [p.lat, p.lon, ms]);
   const isSaved = saved.some((v) => v.lat === p.lat && v.lon === p.lon),
     notify = (s: string) => setNotice(s);
   const changeAccess = (a: Access) => setAccess(persist(a));
@@ -120,7 +120,7 @@ function App() {
         setLookup(c.addressLookup);
         const old = initialAccess();
         if (c.mode === "preview") {
-          changeAccess({ mode: "preview" });
+          changeAccess({ ...old, mode: "preview" });
           return;
         }
         changeAccess({ ...old, mode: "live" });

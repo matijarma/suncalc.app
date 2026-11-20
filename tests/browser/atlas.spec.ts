@@ -77,6 +77,10 @@ test("town, direct coordinates, polar night and offline revisit", async ({
   });
   await context.setOffline(true);
   await page.reload();
+  const previewImage = await page.evaluate(
+    async () => (await fetch("/maps/split-waterfront.webp")).status,
+  );
+  expect(previewImage).toBe(200);
   await expect(page.locator(".place-tag")).toContainText("Pinned coordinates");
   await expect(page.getByRole("slider")).toBeVisible();
   await expect(page.locator(".topline")).toContainText("OFFLINE");

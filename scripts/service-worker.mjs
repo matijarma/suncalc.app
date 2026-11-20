@@ -12,6 +12,7 @@ const shell = all.filter(
     (f.startsWith("/maps/lib/") && f.endsWith(".mjs")) ||
     [
       "/index.html",
+      "/maps/split-waterfront.webp",
       "/icon.svg",
       "/icon-192.png",
       "/icon-512.png",

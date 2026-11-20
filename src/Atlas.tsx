@@ -71,7 +71,12 @@ export default function Atlas(props: Props) {
           setPos({ x: q.x, y: q.y });
         };
         project();
-        m.on("movestart", () => setPainted(true));
+        let missing = false;
+        m.on("movestart", () => {
+          setPainted(true);
+          missing = false;
+          setStatus("");
+        });
         m.on("zoom", () => setZoom(m.getZoom()));
         m.once("idle", () => setPainted(true));
         m.on("move", project);
@@ -91,15 +96,18 @@ export default function Atlas(props: Props) {
             setStatus(
               "Map graphics unavailable. Search or enter coordinates to plan.",
             );
-          else if (e.tile || e.sourceId)
+          else if (e.tile || e.sourceId || Number(e.error?.status) >= 400) {
+            missing = true;
             setStatus(
               navigator.onLine
                 ? "Map detail unavailable here"
                 : "This map area is not cached",
             );
+          }
         });
         m.on("sourcedata", (e: any) => {
           if (
+            !missing &&
             e.tile?.state === "loaded" &&
             m.areTilesLoaded() &&
             navigator.onLine
