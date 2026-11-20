@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "suncalc-admin",
+  "main": "admin/index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "sin.suncalc.app", "custom_domain": true }],
+  "vars": {
+    "ACCESS_ISSUER": "https://kompmajstor.cloudflareaccess.com",
+    "ACCESS_AUD": "bf149dab3546b8046e051eb30c4d3491cb40ba500b43800f69a2b740defa470e",
+  },
+  "d1_databases": [
+    {
+      "binding": "USAGE_DB",
+      "database_name": "suncalc-usage",
+      "database_id": "1b59d389-32b0-42b2-bc45-9d310b67f08f",
+      "migrations_dir": "migrations-usage",
+    },
+  ],
+  "rules": [
+    { "type": "Data", "globs": ["**/*.woff2"], "fallthrough": true },
+    { "type": "Text", "globs": ["**/*.svg"], "fallthrough": true },
+  ],
+  "triggers": { "crons": ["7,22,37,52 * * * *"] },
+  "observability": { "enabled": false },
+}

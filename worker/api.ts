@@ -1,5 +1,6 @@
 export type Env = {
   DB: D1Database;
+  USAGE_DB?: D1Database;
   MAPS: R2Bucket;
   ASSETS: Fetcher;
   MAP_KEY: string;

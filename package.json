@@ -12,11 +12,14 @@
     "data:towns": "python3 scripts/towns.py",
     "prebuild": "node scripts/map-lib.mjs && node scripts/design-css.mjs",
     "predev": "node scripts/map-lib.mjs && node scripts/design-css.mjs",
-    "ci": "npm test && npm run build"
+    "ci": "npm test && npm run build",
+    "ci:admin": "tsc --noEmit && npm test",
+    "usage:backfill": "tsx scripts/backfill-usage.ts"
   },
   "dependencies": {
     "@photostructure/tz-lookup": "^11.8.0",
     "astronomy-engine": "^2.1.19",
+    "jose": "^6.2.18",
     "lucide-preact": "^1.77.0",
     "maplibre-gl": "^6.19.0",
     "pmtiles": "^4.5.0",

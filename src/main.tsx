@@ -1,3 +1,4 @@
+import { startUsage, counted } from "./usage";
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Map as GLMap } from "maplibre-gl";
@@ -62,6 +63,7 @@ const fmtDate = (date: string, opts: Intl.DateTimeFormatOptions) =>
   );
 const numeric = (n: number) => n.toFixed(4);
 function App() {
+  useEffect(startUsage, []);
   const appearance = useAppearance();
   const boot = useMemo(initial, []),
     [p, setP] = useState(boot.p),
@@ -233,8 +235,9 @@ function App() {
     }
     return true;
   }
-  function time(t: number) {
+  function time(t: number, kind: "time" | "date" = "time") {
     if (activate() && Number.isFinite(t)) {
+      counted(kind);
       setMs(t);
       if (location.hash)
         history.replaceState(null, "", location.pathname + location.search);
@@ -242,6 +245,7 @@ function App() {
   }
   function pick(v: Spot) {
     if (!validSpot(v)) return;
+    counted("place");
     if (!locked) activate();
     setP(v);
     write("last", v);
@@ -255,11 +259,12 @@ function App() {
   function dateTo(s: string) {
     if (!s || s < "1900-01-01" || s > "2100-12-31") return;
     try {
-      time(atClock(s, clock(ms, zone), zone));
+      time(atClock(s, clock(ms, zone), zone), "date");
     } catch {}
   }
   function save() {
     if (!activate()) return;
+    if (!isSaved) counted("save");
     const a = isSaved
       ? saved.filter((v) => v.lat !== p.lat || v.lon !== p.lon)
       : [p, ...saved];
@@ -332,7 +337,11 @@ function App() {
   }
   const sh = shadow(height, current.alt),
     openTool = (v: Panel) => {
-      if (activate()) open(v);
+      if (activate()) {
+        if (v === "compare") counted("seasons");
+        if (v === "height" || v === "details") counted("shadow");
+        open(v);
+      }
     },
     coord =
       numeric(Math.abs(p.lat)) +
@@ -666,6 +675,7 @@ function App() {
                 onClick={async () => {
                   try {
                     await navigator.clipboard.writeText(href);
+                    counted("share");
                     notify("Link copied");
                   } catch {
                     notify("Select and copy the link above.");
@@ -680,6 +690,7 @@ function App() {
                   onClick={() =>
                     navigator
                       .share({ title: "SunCalc · " + p.name, url: href })
+                      .then(() => counted("share"))
                       .catch(() => {})
                   }
                 >
@@ -793,10 +804,14 @@ function App() {
               </p>
               <h3>Privacy</h3>
               <p>
-                No cookies, ads, accounts, or analytics. Saved places stay in
-                this browser. Map requests go to SunCalc; a submitted address
-                goes to Geoapify only if you choose lookup. Location access is
-                optional.
+                No cookies, ads, accounts, or analytics identifiers. We count
+                online app opens and which planner tools are used in aggregate.
+                A date stored on this browser helps estimate daily active
+                browsers; it is not sent. These counts contain no coordinates,
+                selected times, search text, shared links, or purchase details.
+                Saved places stay in this browser. Map requests go to SunCalc; a
+                submitted address goes to Geoapify only if you choose lookup.
+                Location access is optional.
               </p>
               <p>
                 In the paid release an anonymous installation key records trial

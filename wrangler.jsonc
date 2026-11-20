@@ -19,6 +19,12 @@
       "database_id": "1fa5c81f-e3fd-4006-a1cf-797201cde357",
       "migrations_dir": "migrations",
     },
+    {
+      "binding": "USAGE_DB",
+      "database_name": "suncalc-usage",
+      "database_id": "1b59d389-32b0-42b2-bc45-9d310b67f08f",
+      "migrations_dir": "migrations-usage",
+    },
   ],
   "r2_buckets": [{ "binding": "MAPS", "bucket_name": "suncalc-maps" }],
   "workflows": [
