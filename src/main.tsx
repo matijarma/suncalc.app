@@ -142,7 +142,10 @@ export function App({androidAccess,liveShadow}:{androidAccess?:()=>void; liveSha
         if (ref && active) await refreshOrder(ref);
       })
       .catch(() => {});
-    const net = () => setOffline(!navigator.onLine);
+    const net = () => {
+      setOffline(!navigator.onLine);
+      if (android && navigator.onLine) native<{addressLookup:boolean}>("config").then(c=>{if(active)setLookup(c.addressLookup)}).catch(()=>{});
+    };
     addEventListener("online", net);
     addEventListener("offline", net);
     return () => {

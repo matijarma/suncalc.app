@@ -18,6 +18,7 @@ internal class PlayStore(
     private var busy = false
     private var querying = false
     private var connecting = false
+    private var closed = false
     private val client =
         BillingClient.newBuilder(activity)
             .enablePendingPurchases(
@@ -26,6 +27,7 @@ internal class PlayStore(
             .enableAutoServiceReconnection()
             .setListener { r, purchases ->
                 activity.runOnUiThread {
+                    if (closed) return@runOnUiThread
                     busy = false
                     when (r.responseCode) {
                         BillingClient.BillingResponseCode.OK ->
@@ -43,6 +45,7 @@ internal class PlayStore(
             .build()
 
     private fun process(p: Purchase) {
+        if (closed) return
         owned.addAll(p.products)
         if (p.purchaseState == Purchase.PurchaseState.PENDING) {
             notify("Payment is pending in Google Play.")
@@ -64,6 +67,7 @@ internal class PlayStore(
     }
 
     fun refresh(manual: Boolean = false) {
+        if (closed) return
         if (!client.isReady) {
             if (connecting) return
             connecting = true
@@ -199,5 +203,8 @@ internal class PlayStore(
         }
     }
 
-    fun close() = client.endConnection()
+    fun close() {
+        closed = true
+        client.endConnection()
+    }
 }

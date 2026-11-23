@@ -1,6 +1,6 @@
 # SunCalc on Google Play
 
-The Android release is a bundled planner, package `app.suncalc.planner`. The hosted planner continues to use its existing preview and billing settings. Android 10+, target SDK 36. The release signing key stays outside Git.
+The Android release is a bundled planner, package `app.suncalc.planner`. The hosted planner continues to use its existing preview and billing settings. Offline first open reads bundled assets and local trial state; the Android host initializes Google Play billing and synchronizes entitlements only after Android reports a validated network. Android 10+, target SDK 36. The release signing key stays outside Git.
 
 ## Build and test
 

@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.*
 import android.view.ViewGroup
@@ -15,7 +17,7 @@ import org.json.JSONObject
 class PlannerActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var access: Entitlements
-    private lateinit var play: PlayStore
+    private var play: PlayStore? = null
     private lateinit var compass: Compass
     private val handler = Handler(Looper.getMainLooper())
     private var alive = true
@@ -29,16 +31,39 @@ class PlannerActivity : Activity() {
         geoCallback = null
         if (!tracking) compass.stop()
     }
+
+    private fun online(): Boolean {
+        val cm = getSystemService(ConnectivityManager::class.java)
+        return cm.getNetworkCapabilities(cm.activeNetwork)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+    }
+
+    // The planner, trial and free dial never need a Play service on an offline launch.
+    private fun store(): PlayStore =
+        play
+            ?: PlayStore(
+                    this,
+                    access,
+                    { status() },
+                    { event("notice", JSONObject().put("message", it)) },
+                )
+                .also { play = it }
+
     private var lastSync = 0L
     private val tick =
         object : Runnable {
             override fun run() {
                 if (!foreground) return
-                status()
-                if (SystemClock.elapsedRealtime() - lastSync >= 120000) {
+                if (!online()) {
+                    play?.close()
+                    play = null
+                    lastSync = 0L
+                } else if (lastSync == 0L || SystemClock.elapsedRealtime() - lastSync >= 120000) {
+                    if (lastSync == 0L) store().refresh()
                     lastSync = SystemClock.elapsedRealtime()
                     access.sync()
                 }
+                status()
                 handler.postDelayed(this, 15000)
             }
         }
@@ -55,13 +80,6 @@ class PlannerActivity : Activity() {
             return
         }
         access = Entitlements(this) { runOnUiThread { status() } }
-        play =
-            PlayStore(
-                this,
-                access,
-                { status() },
-                { event("notice", JSONObject().put("message", it)) },
-            )
         compass =
             Compass(this) { v ->
                 if (tracking) event("sensor", v)
@@ -130,7 +148,13 @@ class PlannerActivity : Activity() {
             origin,
             main,
             reply ->
-            if (!main || origin.toString().trimEnd('/') != ORIGIN) return@addWebMessageListener
+            if (
+                !main ||
+                    origin.scheme != "https" ||
+                    origin.host != HOST ||
+                    origin.port !in listOf(-1, 443)
+            )
+                return@addWebMessageListener
             val m =
                 runCatching { JSONObject(msg.data ?: "") }.getOrNull()
                     ?: return@addWebMessageListener
@@ -145,13 +169,24 @@ class PlannerActivity : Activity() {
             when (m.optString("method")) {
                 "state" -> answer(snapshot())
                 "restore" -> {
-                    access.sync()
-                    play.refresh(true)
-                    answer(JSONObject())
+                    if (online()) {
+                        access.sync()
+                        store().refresh(true)
+                        answer(JSONObject())
+                    } else
+                        answer(
+                            JSONObject()
+                                .put("error", "Connect to Google Play to restore your purchase."),
+                        )
                 }
                 "buy" -> {
-                    play.buy(args.optString("product"))
-                    answer(JSONObject())
+                    if (online()) {
+                        store().buy(args.optString("product"))
+                        answer(JSONObject())
+                    } else
+                        answer(
+                            JSONObject().put("error", "Connect to Google Play to make a purchase."),
+                        )
                 }
                 "manage" -> {
                     external(
@@ -186,13 +221,15 @@ class PlannerActivity : Activity() {
                     handler.postDelayed(geoTimeout, 15000)
                     startLocation()
                 }
-                "config" -> access.config { answer(JSONObject().put("addressLookup", it)) }
+                "config" ->
+                    if (online()) access.config { answer(JSONObject().put("addressLookup", it)) }
+                    else answer(JSONObject().put("addressLookup", false))
                 "address" ->
-                    if (access.state().getString("kind") != "locked")
+                    if (online() && access.state().getString("kind") != "locked")
                         access.lookup(args.optString("q").take(180)) {
                             answer(it ?: JSONObject().put("error", "Address lookup unavailable."))
                         }
-                    else answer(JSONObject().put("error", "Planner locked."))
+                    else answer(JSONObject().put("error", "Address lookup is unavailable."))
                 "share" -> {
                     val u = Uri.parse(args.optString("url"))
                     if (validLink(u) && access.state().getString("kind") != "locked")
@@ -245,7 +282,7 @@ class PlannerActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val hash = fragment(intent)
-        if (hash.isNotEmpty() && ::play.isInitialized)
+        if (hash.isNotEmpty() && ::access.isInitialized)
             web.evaluateJavascript("location.hash=" + JSONObject.quote(hash), null)
     }
 
@@ -253,10 +290,11 @@ class PlannerActivity : Activity() {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
     }
 
-    private fun snapshot() = access.state().put("prices", play.prices())
+    private fun snapshot() =
+        access.state().put("prices", if (online()) play?.prices() ?: JSONObject() else JSONObject())
 
     private fun status() {
-        if (alive && ::play.isInitialized) event("state", snapshot())
+        if (alive && ::access.isInitialized) event("state", snapshot())
     }
 
     private fun event(kind: String, v: JSONObject) {
@@ -304,7 +342,7 @@ class PlannerActivity : Activity() {
     }
 
     private fun back() {
-        if (!::play.isInitialized) {
+        if (!::access.isInitialized) {
             finish()
             return
         }
@@ -325,12 +363,10 @@ class PlannerActivity : Activity() {
     override fun onResume() {
         super.onResume()
         foreground = true
-        if (::play.isInitialized) {
+        if (::access.isInitialized) {
             web.onResume()
             if (tracking && compass.allowed()) compass.start()
-            access.sync()
-            lastSync = SystemClock.elapsedRealtime()
-            play.refresh()
+            lastSync = 0L
             handler.post(tick)
         }
     }
@@ -348,8 +384,8 @@ class PlannerActivity : Activity() {
     override fun onDestroy() {
         alive = false
         handler.removeCallbacksAndMessages(null)
-        if (::play.isInitialized) {
-            play.close()
+        if (::access.isInitialized) {
+            play?.close()
             compass.stop()
             access.close()
         }
