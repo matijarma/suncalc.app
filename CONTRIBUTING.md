@@ -26,3 +26,5 @@ private locations, recovery codes, customer data or third-party assets you canno
 
 Production releases use GitHub-connected Cloudflare Workers Builds. Pull requests
 do not deploy production. Maintainers merge reviewed changes to `main` to release.
+Workers Builds runs the repository's CI command and reports its status on GitHub.
+Run the unit and browser checks locally before submitting a pull request.
