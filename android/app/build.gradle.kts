@@ -20,7 +20,7 @@ android {
         minSdk = 29
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = providers.gradleProperty("sunCalcVersionCode").orNull?.toInt() ?: 3
+        versionCode = providers.gradleProperty("sunCalcVersionCode").orNull?.toInt() ?: 4
         versionName = "1.0"
     }
     signingConfigs {

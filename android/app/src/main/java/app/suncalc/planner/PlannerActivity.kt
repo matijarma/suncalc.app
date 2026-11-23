@@ -8,8 +8,11 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.*
+import android.view.Gravity
 import android.view.ViewGroup
 import android.webkit.*
+import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.webkit.*
 import org.json.JSONObject
@@ -21,6 +24,7 @@ class PlannerActivity : Activity() {
     private lateinit var compass: Compass
     private val handler = Handler(Looper.getMainLooper())
     private var alive = true
+    private var displayLost = false
     private var foreground = false
     private var tracking = false
     private var geoCallback: ((JSONObject) -> Unit)? = null
@@ -70,13 +74,14 @@ class PlannerActivity : Activity() {
 
     override fun onCreate(saved: Bundle?) {
         super.onCreate(saved)
+        if (WebView.getCurrentWebViewPackage() == null) {
+            showDisplayRecovery("Install or enable Android System WebView to open SunCalc.")
+            return
+        }
         web = WebView(this)
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-            setContentView(
-                TextView(this).apply {
-                    text = "Update Android System WebView or Chrome to open SunCalc."
-                },
-            )
+            web.destroy()
+            showDisplayRecovery("Update Android System WebView or Chrome to open SunCalc.")
             return
         }
         access = Entitlements(this) { runOnUiThread { status() } }
@@ -103,6 +108,27 @@ class PlannerActivity : Activity() {
         CookieManager.getInstance().setAcceptCookie(false)
         web.webViewClient =
             object : WebViewClient() {
+                override fun onRenderProcessGone(
+                    view: WebView,
+                    detail: RenderProcessGoneDetail,
+                ): Boolean {
+                    // Android will terminate the host process unless every affected view handles
+                    // this.
+                    displayLost = true
+                    tracking = false
+                    geoCallback = null
+                    handler.removeCallbacksAndMessages(null)
+                    compass.stop()
+                    play?.close()
+                    play = null
+                    (view.parent as? ViewGroup)?.removeView(view)
+                    view.destroy()
+                    showDisplayRecovery(
+                        "Android stopped the planner display. Your saved places are still on this device.",
+                    )
+                    return true
+                }
+
                 override fun shouldInterceptRequest(
                     view: WebView,
                     r: WebResourceRequest,
@@ -162,7 +188,7 @@ class PlannerActivity : Activity() {
             val args = m.optJSONObject("args") ?: JSONObject()
             val answer: (JSONObject) -> Unit = { v ->
                 runOnUiThread {
-                    if (alive)
+                    if (alive && !displayLost)
                         reply.postMessage(JSONObject().put("id", id).put("value", v).toString())
                 }
             }
@@ -282,8 +308,59 @@ class PlannerActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val hash = fragment(intent)
-        if (hash.isNotEmpty() && ::access.isInitialized)
+        if (hash.isNotEmpty() && ::access.isInitialized && !displayLost)
             web.evaluateJavascript("location.hash=" + JSONObject.quote(hash), null)
+    }
+
+    private fun showDisplayRecovery(message: String) {
+        displayLost = true
+        val pad = (24 * resources.displayMetrics.density).toInt()
+        setContentView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(pad, pad, pad, pad)
+                setBackgroundColor(Color.rgb(248, 246, 236))
+                addView(
+                    TextView(context).apply {
+                        text = "SunCalc"
+                        textSize = 30f
+                        setTextColor(Color.rgb(32, 35, 28))
+                        isAccessibilityHeading = true
+                    },
+                )
+                addView(
+                    TextView(context).apply {
+                        text = message
+                        textSize = 17f
+                        setTextColor(Color.rgb(32, 35, 28))
+                        setPadding(0, pad / 2, 0, pad)
+                    },
+                )
+                addView(
+                    Button(context).apply {
+                        text = "Reopen planner"
+                        setOnClickListener { recreate() }
+                    },
+                )
+                addView(
+                    Button(context).apply {
+                        text = "Update WebView"
+                        setOnClickListener {
+                            val provider =
+                                WebView.getCurrentWebViewPackage()?.packageName
+                                    ?: "com.google.android.webview"
+                            external(
+                                Uri.parse("https://play.google.com/store/apps/details")
+                                    .buildUpon()
+                                    .appendQueryParameter("id", provider)
+                                    .build(),
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun external(uri: Uri) {
@@ -294,11 +371,11 @@ class PlannerActivity : Activity() {
         access.state().put("prices", if (online()) play?.prices() ?: JSONObject() else JSONObject())
 
     private fun status() {
-        if (alive && ::access.isInitialized) event("state", snapshot())
+        if (alive && !displayLost && ::access.isInitialized) event("state", snapshot())
     }
 
     private fun event(kind: String, v: JSONObject) {
-        if (alive)
+        if (alive && !displayLost)
             web.evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('sc:" +
                     kind +
@@ -342,7 +419,7 @@ class PlannerActivity : Activity() {
     }
 
     private fun back() {
-        if (!::access.isInitialized) {
+        if (displayLost || !::access.isInitialized) {
             finish()
             return
         }
@@ -363,7 +440,7 @@ class PlannerActivity : Activity() {
     override fun onResume() {
         super.onResume()
         foreground = true
-        if (::access.isInitialized) {
+        if (!displayLost && ::access.isInitialized) {
             web.onResume()
             if (tracking && compass.allowed()) compass.start()
             lastSync = 0L
@@ -376,7 +453,7 @@ class PlannerActivity : Activity() {
         handler.removeCallbacks(tick)
         if (::compass.isInitialized) {
             compass.stop()
-            web.onPause()
+            if (!displayLost) web.onPause()
         }
         super.onPause()
     }
@@ -389,7 +466,10 @@ class PlannerActivity : Activity() {
             compass.stop()
             access.close()
         }
-        web.destroy()
+        if (::web.isInitialized && !displayLost) {
+            (web.parent as? ViewGroup)?.removeView(web)
+            web.destroy()
+        }
         super.onDestroy()
     }
 }
