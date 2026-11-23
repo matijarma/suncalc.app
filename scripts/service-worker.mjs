@@ -16,6 +16,7 @@ const shell = all.filter(
       "/maps/split-waterfront.webp",
       "/maps/split-waterfront-dark.webp",
       "/appearance-boot.js",
+      "/site.css",
       "/icon-180.png",
       "/icon.svg",
       "/icon-192.png",
@@ -34,7 +35,7 @@ self.addEventListener('install',e=>e.waitUntil(caches.open(NAME).then(c=>c.addAl
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('sc-shell-')&&k!==NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 let trim=Promise.resolve();function prune(cache){trim=trim.catch(()=>{}).then(async()=>{const keys=await cache.keys();if(keys.length>360)await Promise.all(keys.slice(0,keys.length-340).map(k=>cache.delete(k)))});return trim}
 self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==location.origin||u.pathname.startsWith('/api/')||u.pathname==='/sw.js')return;
-if(r.mode==='navigate'){e.respondWith(fetch(r).then(res=>{if(!res.ok)throw Error();return res}).catch(()=>caches.open(NAME).then(c=>c.match('/'))));return}
+if(r.mode==='navigate'){e.respondWith(fetch(r).catch(async()=>{if(u.pathname==='/'){const cached=await caches.open(NAME).then(c=>c.match('/'));if(cached)return cached}return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page unavailable offline · SunCalc.app</title><h1>This page needs a connection</h1><p>The sun planner is available offline after an online visit.</p><a href="/">Open the planner</a></html>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8'}})}));return}
 if(SHELL.includes(u.pathname)){e.respondWith(caches.open(NAME).then(async c=>(await c.match(u.pathname))||fetch(r)));return}
 if(!/^\\/(tiles|towns|maps)\\//.test(u.pathname))return;
 e.respondWith((async()=>{const c=await caches.open(DATA),hit=await c.match(r);if(hit)return hit;try{const resp=await fetch(r);if(resp.ok&&resp.status===200){try{await c.put(r,resp.clone());await prune(c)}catch{}}return resp}catch{return new Response('Not cached offline',{status:503})}})());});`,

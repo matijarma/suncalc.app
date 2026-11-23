@@ -3,8 +3,12 @@
   "name": "suncalc-app",
   "main": "worker/index.ts",
   "compatibility_date": "2026-11-01",
-  "workers_dev": true,
-  "routes": [{ "pattern": "suncalc.app", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "suncalc.app", "custom_domain": true },
+    { "pattern": "www.suncalc.app", "custom_domain": true }
+  ],
   "assets": {
     "directory": "dist",
     "binding": "ASSETS",

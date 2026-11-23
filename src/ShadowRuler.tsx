@@ -69,6 +69,7 @@ export function ShadowRuler({
       </div>
       <div class="footnote">
         <span>Clear horizon</span>
+        <a class="learn-link" href="#learn">About &amp; guides ↓</a>
         <button onClick={more}>
           More tools <ArrowRight size={14} />
         </button>

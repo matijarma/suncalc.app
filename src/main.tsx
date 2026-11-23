@@ -39,7 +39,7 @@ import {
   validSpot,
   type Spot,
 } from "./solar";
-import { read, write, shareURL, initial, coordinates } from "./storage";
+import { read, write, shareURL, initial, sharedPlan, coordinates } from "./storage";
 import { find, type Result } from "./search";
 import { settings, post, initialAccess, persist, type Access } from "./access";
 import "./style.css";
@@ -153,8 +153,8 @@ function App() {
   }, []);
   useEffect(() => {
     const shared = () => {
-      if (!location.hash) return;
-      const v = initial();
+      const v = sharedPlan(location.hash);
+      if (!v) return;
       setP(v.p);
       setMs(v.ms);
       setExample(v.example);
@@ -387,7 +387,7 @@ function App() {
       >
         Skip to planner
       </a>
-      <main class="planner" id="planner-content" tabIndex={-1}>
+      <section class="planner" id="planner-content" aria-label="Sun and shadow planner" tabIndex={-1}>
         <header class="appbar">
           <a class="logo-link" href="/" aria-label="SunCalc home">
             <img
@@ -483,7 +483,7 @@ function App() {
             </button>
           </div>
         )}
-      </main>
+      </section>
       {notice && !panel && (
         <div class="toast" role="status">
           {notice}
@@ -797,6 +797,7 @@ function App() {
           )}
           {panel === "about" && (
             <>
+              <p><a href="/about/">About SunCalc.app, privacy and credits</a> · <a href="/guides/">Guides</a></p>
               <p>
                 SunCalc shows where sunlight comes from at any pin on Earth.
                 Bearings use true north; event times use a clear, level horizon

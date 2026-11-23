@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#F8F6EC" />
     <script src="/appearance-boot.js"></script>
     <link rel="stylesheet" href="/brand/palette.css" />
+    <link rel="stylesheet" href="/site.css" />
     <link
       rel="preload"
       href="/brand/bricolage.woff2"
@@ -17,20 +18,18 @@
       type="font/woff2"
       crossorigin
     />
-    <meta
-      name="description"
-      content="See where the sun will be, how long a shadow it casts, and when it sets. A private sunlight planner."
-    />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-180.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>SunCalc · Sun and shadow planner</title>
+    <!-- site:metadata -->
   </head>
   <body>
-    <div id="app"></div>
-    <noscript
-      >SunCalc needs JavaScript to calculate sunlight at your pin.</noscript
-    >
+    <main>
+      <div id="app" class="planner-slot"></div>
+      <noscript><p class="planner-noscript">The interactive planner needs JavaScript to calculate sunlight at your pin. You can read the introduction and guides below without it.</p></noscript>
+      <!-- site:content -->
+    </main>
+    <!-- site:footer -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

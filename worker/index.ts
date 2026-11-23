@@ -1,6 +1,7 @@
 import { collectUsage } from "./usage";
 import { api, type Env } from "./api";
 import { tile } from "./tiles";
+import { searchResponse } from "./site";
 export { MapImport } from "./import";
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext) {
@@ -16,7 +17,7 @@ export default {
           ? await tile(req, env, ctx, m)
           : new Response(null, { status: 404 });
       }
-      return env.ASSETS.fetch(req);
+      return searchResponse(req, await env.ASSETS.fetch(req));
     } catch {
       return Response.json(
         { error: "The service is temporarily unavailable." },

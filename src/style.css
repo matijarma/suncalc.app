@@ -1190,6 +1190,13 @@ html {
 .footnote {
   align-items: center;
 }
+.footnote .learn-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 32px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
 .locked {
   padding-block: 15px;
 }

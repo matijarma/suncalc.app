@@ -1,0 +1,14 @@
+name: Suggest an improvement
+description: A practical use case, guide or interface improvement
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What are you trying to do?
+      description: Describe the situation and what would make planning easier.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your suggestion

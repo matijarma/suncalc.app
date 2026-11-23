@@ -22,8 +22,8 @@ export function shareURL(p: Spot, ms: number) {
   }).toString();
   return u.toString();
 }
-export function initial() {
-  const h = new URLSearchParams(location.hash.slice(1)),
+export function sharedPlan(hash: string) {
+  const h = new URLSearchParams(hash.slice(1)),
     p = {
       lat: Number(h.get("lat")),
       lon: Number(h.get("lon")),
@@ -39,6 +39,11 @@ export function initial() {
     new Date(ms).getUTCFullYear() <= 2100
   )
     return { p, ms, example: false };
+  return null;
+}
+export function initial() {
+  const shared = sharedPlan(location.hash);
+  if (shared) return shared;
   const last = read<Spot | null>("last", null);
   return {
     p: validSpot(last) ? last : SPLIT,

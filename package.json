@@ -14,7 +14,8 @@
     "predev": "node scripts/map-lib.mjs && node scripts/design-css.mjs",
     "ci": "npm test && npm run build",
     "ci:admin": "tsc --noEmit && npm test",
-    "usage:backfill": "tsx scripts/backfill-usage.ts"
+    "usage:backfill": "tsx scripts/backfill-usage.ts",
+    "media": "node scripts/media.mjs"
   },
   "dependencies": {
     "@photostructure/tz-lookup": "^11.8.0",
@@ -34,5 +35,12 @@
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "wrangler": "^4.165.0"
+  },
+  "license": "MIT",
+  "description": "A private, no-account sun position and shadow planner.",
+  "homepage": "https://suncalc.app/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matijarma/suncalc.app.git"
   }
 }

@@ -1,0 +1,11 @@
+title = "SunCalc secret scanning"
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public map archive filename and public Cloudflare Access JWT audience; reviewed before publication"
+regexTarget = "secret"
+regexes = [
+  '''^20261118\.pmtiles$''',
+  '''^bf149dab3546b8046e051eb30c4d3491cb40ba500b43800f69a2b740defa470e$'''
+]

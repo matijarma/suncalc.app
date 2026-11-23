@@ -8,7 +8,7 @@
   "assets": {
     "directory": "dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/tiles/*"],
+    "run_worker_first": true,
     "not_found_handling": "none",
   },
   "vars": { "BILLING_MODE": "preview", "MAP_KEY": "20261118.pmtiles" },
