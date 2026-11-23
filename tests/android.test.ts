@@ -1,4 +1,5 @@
 import test from "node:test";
+import { SignJWT } from "jose";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
@@ -67,7 +68,9 @@ test("first opening survives reinstall; verified grants restore to another devic
       for (const r of rows) await r.run();
     },
   };
-  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
   const env: any = {
     DB: db,
     ANDROID_TRIAL_SECRET: "temporary-test-only",
@@ -82,6 +85,16 @@ test("first opening survives reinstall; verified grants restore to another devic
     unavailable = false;
   globalThis.fetch = async (input) => {
     const u = String(input);
+    if (u.includes("v3/certs"))
+      return Response.json({
+        keys: [
+          {
+            ...publicKey.export({ format: "jwk" }),
+            kid: "local",
+            alg: "RS256",
+          },
+        ],
+      });
     if (u.includes("oauth2"))
       return Response.json({ access_token: "unit-test", expires_in: 3600 });
     if (u.endsWith(":acknowledge")) {
@@ -161,6 +174,52 @@ test("first opening survives reinstall; verified grants restore to another devic
       false,
     );
     assert.equal((await call("notifications", one)).status, 503);
+    env.PLAY_PUSH_EMAIL = "push@example.invalid";
+    env.PLAY_PUSH_AUDIENCE = "https://suncalc.app/api/android/notifications";
+    assert.equal((await call("notifications", one)).status, 401);
+    const idToken = await new SignJWT({
+      email: env.PLAY_PUSH_EMAIL,
+      email_verified: true,
+    })
+      .setProtectedHeader({ alg: "RS256", kid: "local" })
+      .setIssuer("https://accounts.google.com")
+      .setAudience(env.PLAY_PUSH_AUDIENCE)
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(privateKey);
+    const notification = {
+      packageName: "app.suncalc.planner",
+      voidedPurchaseNotification: { purchaseToken: buy.token, productType: 2 },
+    };
+    const deliver = () =>
+      androidApi(
+        new Request(env.PLAY_PUSH_AUDIENCE, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + idToken,
+          },
+          body: JSON.stringify({
+            message: { data: btoa(JSON.stringify(notification)) },
+          }),
+        }),
+        env,
+      );
+    state = "PURCHASED";
+    assert.equal(
+      ((await (await call("verify", one, start, buy)).json()) as any).lifetime,
+      true,
+    );
+    assert.equal((await deliver()).status, 200);
+    assert.equal((await deliver()).status, 200);
+    assert.equal(
+      ((await (await call("verify", one, start, buy)).json()) as any).lifetime,
+      false,
+    );
+    assert.equal(
+      ((await (await call("state", two)).json()) as any).lifetime,
+      false,
+    );
   } finally {
     globalThis.fetch = orig;
     sql.close();

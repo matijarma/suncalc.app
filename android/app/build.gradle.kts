@@ -19,6 +19,7 @@ android {
         applicationId = "app.suncalc.planner"
         minSdk = 29
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.gradleProperty("sunCalcVersionCode").orNull?.toInt() ?: 2
         versionName = "1.0"
     }
@@ -65,4 +66,6 @@ dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("com.android.billingclient:billing:9.1.0")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

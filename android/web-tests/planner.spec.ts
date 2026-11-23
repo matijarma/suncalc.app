@@ -89,3 +89,42 @@ test("first-open planner, native share URL, foreground expiry and saved pins", a
     page.getByRole("button", { name: "Remove saved place", exact: true }),
   ).toBeVisible();
 });
+
+test("the live shadow rotates with true heading and disappears at night or without a fix", async ({
+  page,
+}) => {
+  await bridge(page, "locked");
+  await page.clock.setFixedTime(new Date("2026-06-21T10:00:00Z"));
+  await page.goto("/");
+  await page.getByRole("button", { name: /Live Shadow/ }).click();
+  const line = page.locator(".cast-line");
+  const fix = (lat: number, lon: number, heading: number | null) =>
+    page.evaluate(
+      (v) => dispatchEvent(new CustomEvent("sc:sensor", { detail: v })),
+      { lat, lon, heading },
+    );
+  const vector = () =>
+    line.evaluate((el) => [
+      Number(el.getAttribute("x2")) - 110,
+      Number(el.getAttribute("y2")) - 110,
+    ]);
+  await expect(line).toBeVisible();
+  const [x, y] = await vector();
+  await fix(43.508, 16.438, 90);
+  await expect(page.getByText(/Compass aligned to true north/)).toBeVisible();
+  const [a, b] = await vector();
+  expect(a).toBeCloseTo(y, 3);
+  expect(b).toBeCloseTo(-x, 3);
+  await fix(43.508, -163.562, null);
+  await expect(page.getByText(/sun is below the horizon/i)).toBeVisible();
+  await expect(line).toHaveCount(0);
+  await page.evaluate(() =>
+    dispatchEvent(
+      new CustomEvent("sc:sensor", {
+        detail: { status: "Location permission is off." },
+      }),
+    ),
+  );
+  await expect(page.getByText("Location permission is off.")).toBeVisible();
+  await expect(line).toHaveCount(0);
+});
