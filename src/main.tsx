@@ -159,6 +159,9 @@ function App() {
       setMs(v.ms);
       setExample(v.example);
       open(null);
+      const planner = document.getElementById("planner-content");
+      planner?.scrollIntoView({ block: "start" });
+      planner?.focus({ preventScroll: true });
     };
     addEventListener("hashchange", shared);
     return () => removeEventListener("hashchange", shared);

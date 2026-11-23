@@ -6,6 +6,8 @@
 - New checks cover fragment navigation without changing the current plan, all
   six sitemap pages without JavaScript, working links and images, no planner
   bundle on guides, preview noindex headers and genuine 404 navigation.
+- Homepage example links bring the planner into view and move keyboard focus
+  to it; explanatory anchors preserve the selected place and time.
 - Widths 320, 390, 741 and 1440 px: no horizontal overflow; explanatory content
   begins after the planner's full first viewport.
 - Light/dark guide pages, the social card and the captioned 28-second demo were

@@ -12,6 +12,11 @@ test("the app stays in the first viewport and section links preserve a shared pl
   await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
   await page.goBack();
   await expect(page.locator(".big-clock")).toHaveText("18:00");
+  await page.getByRole("link", { name: "About & guides" }).click();
+  await page.getByRole("link", { name: "Try the June example" }).click();
+  await expect(page.locator(".big-clock")).toHaveText("12:56");
+  await expect(page.locator(".appbar")).toBeInViewport();
+  await expect(page.locator("#planner-content")).toBeFocused();
   expect(await page.locator("main").count()).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
