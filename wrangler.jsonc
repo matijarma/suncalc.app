@@ -16,6 +16,7 @@
     "not_found_handling": "none",
   },
   "vars": { "BILLING_MODE": "preview", "MAP_KEY": "20261118.pmtiles" },
+  "ratelimits": [{ "name": "ANDROID_LIMIT", "namespace_id": "69417206", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [
     {
       "binding": "DB",

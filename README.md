@@ -9,6 +9,10 @@ scrub the day, compare seasons and share a precise moment—without an account.
 
 Map: © OpenStreetMap contributors · Protomaps.
 
+## Android
+
+The bundled Android app adds a free live shadow compass, offline first launch and a seven-day no-card trial. Google Play purchases apply only to Android. [Build, signing, store setup and release verification](docs/android-release.md).
+
 ## What you can do
 
 - Find a town, enter coordinates, drop a pin, or optionally use your location.

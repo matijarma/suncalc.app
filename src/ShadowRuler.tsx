@@ -8,12 +8,14 @@ export function ShadowRuler({
   az,
   edit,
   more,
+  liveShadow,
 }: {
   height: number;
   length: number | null;
   az: number;
   edit: () => void;
   more: () => void;
+  liveShadow?: () => void;
 }) {
   const scale =
       length === null
@@ -69,7 +71,7 @@ export function ShadowRuler({
       </div>
       <div class="footnote">
         <span>Clear horizon</span>
-        <a class="learn-link" href="#learn">About &amp; guides ↓</a>
+        {liveShadow ? <button class="learn-link" onClick={liveShadow}>Live Shadow ↗</button> : <a class="learn-link" href="#learn">About &amp; guides ↓</a>}
         <button onClick={more}>
           More tools <ArrowRight size={14} />
         </button>

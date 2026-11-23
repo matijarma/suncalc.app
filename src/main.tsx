@@ -1,5 +1,5 @@
 import { startUsage, counted } from "./usage";
-import { render } from "preact";
+import {android,native} from "./android/bridge";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Map as GLMap } from "maplibre-gl";
 import {
@@ -62,8 +62,8 @@ const fmtDate = (date: string, opts: Intl.DateTimeFormatOptions) =>
     new Date(date + "T12:00Z"),
   );
 const numeric = (n: number) => n.toFixed(4);
-function App() {
-  useEffect(startUsage, []);
+export function App({androidAccess,liveShadow}:{androidAccess?:()=>void; liveShadow?:()=>void}) {
+  useEffect(() => { if(!android) return startUsage(); }, []);
   const appearance = useAppearance();
   const boot = useMemo(initial, []),
     [p, setP] = useState(boot.p),
@@ -122,7 +122,7 @@ function App() {
   }
   useEffect(() => {
     let active = true;
-    settings()
+    (android ? native<{mode:"preview";addressLookup:boolean}>("config").then(c=>({...c,mode:"preview" as const})) : settings())
       .then(async (c) => {
         if (!active) return;
         setLookup(c.addressLookup);
@@ -276,6 +276,7 @@ function App() {
     notify(isSaved ? "Place removed" : "Place saved on this device");
   }
   function gps() {
+    if(android){ native<{lat:number;lon:number}>("location").then(v=>pick({lat:v.lat,lon:v.lon,name:"My location"})).catch(e=>notify(e.message)); return; }
     if (!navigator.geolocation) {
       notify("Location is unavailable. Search for a place instead.");
       return;
@@ -296,7 +297,7 @@ function App() {
     const gen = ++addressGeneration.current;
     setSearchState("Looking up address…");
     try {
-      const a = await post("address", { q: query });
+      const a = android ? await native<{places:Spot[]}>("address",{q:query}) : await post("address", { q: query });
       if (gen !== addressGeneration.current) return;
       setResults(
         a.places.map((v: Spot) => ({
@@ -453,7 +454,7 @@ function App() {
           date={() => openTool("date")}
           time={() => openTool("time")}
           change={time}
-          access={() => open("access")}
+          access={androidAccess ? ()=>{open(null);androidAccess()} : ()=>open("access")}
         />
         <Atlas
           p={p}
@@ -476,6 +477,7 @@ function App() {
             az={current.az}
             edit={() => openTool("height")}
             more={() => openTool("more")}
+            liveShadow={liveShadow}
           />
         ) : (
           <div class="shadowcard locked-basics">
@@ -518,10 +520,11 @@ function App() {
           }
           onClose={() => open(null)}
         >
+          {panel === "settings" && liveShadow && <button class="result" onClick={()=>{open(null);liveShadow()}}>Live Shadow · compass</button>}
           {panel === "settings" && (
             <Preferences
               appearance={appearance}
-              access={() => open("access")}
+              access={androidAccess ? ()=>{open(null);androidAccess()} : ()=>open("access")}
               about={() => open("about")}
             />
           )}
@@ -687,7 +690,8 @@ function App() {
               >
                 Copy link
               </button>
-              {!!navigator.share && (
+              {android && <button class="chip" onClick={()=>native("share",{url:href}).catch(e=>notify(e.message))}>Share…</button>}
+              {!android && !!navigator.share && (
                 <button
                   class="chip"
                   onClick={() =>
@@ -798,7 +802,8 @@ function App() {
               </p>
             </>
           )}
-          {panel === "about" && (
+          {panel === "about" && android && <><p>SunCalc models sunlight on level ground. Bearings use true north. Terrain, trees, and buildings are not included.</p><p>Map: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · Protomaps · Natural Earth. Towns: <a href="https://www.geonames.org/">GeoNames</a>.</p><button class="chip" onClick={()=>native("privacy")}>Android privacy policy</button></>}
+          {panel === "about" && !android && (
             <>
               <p><a href="/about/">About SunCalc.app, privacy and credits</a> · <a href="/guides/">Guides</a></p>
               <p>
@@ -929,25 +934,3 @@ function App() {
     </>
   );
 }
-render(<App />, document.getElementById("app")!);
-if (import.meta.env.PROD && "serviceWorker" in navigator)
-  addEventListener("load", () => {
-    navigator.serviceWorker.addEventListener(
-      "controllerchange",
-      () => {
-        const paths = performance
-          .getEntriesByType("resource")
-          .map((r) => new URL(r.name, location.href))
-          .filter(
-            (u) =>
-              u.origin === location.origin &&
-              /^\/(tiles|maps\/fonts|towns)\//.test(u.pathname),
-          )
-          .map((u) => u.pathname);
-        for (const path of [...new Set(paths)].slice(-45))
-          fetch(path).catch(() => {});
-      },
-      { once: true },
-    );
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });

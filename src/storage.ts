@@ -1,3 +1,4 @@
+import {android} from "./android/bridge";
 import { SPLIT, validSpot, type Spot } from "./solar";
 export function read<T>(key: string, fallback: T): T {
   try {
@@ -12,7 +13,7 @@ export function write(key: string, value: unknown) {
   } catch {}
 }
 export function shareURL(p: Spot, ms: number) {
-  const u = new URL(location.href);
+  const u = new URL(android ? "https://suncalc.app/" : location.href);
   u.search = "";
   u.hash = new URLSearchParams({
     lat: String(p.lat),

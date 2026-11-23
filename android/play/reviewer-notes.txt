@@ -1,0 +1,7 @@
+No login, payment method or special code is needed to access the full planner during the first seven days. Search for Split or load a shared plan, scrub the time, and open More tools. Enable airplane mode on the first start to test the bundled planner.
+
+Open Appearance & settings → Your access for both Google Play products and Restore purchases. Test payments with a Play license tester. A monthly subscriber must finish their existing subscription before buying lifetime; manage it from Your access. No external checkout.
+
+Open Live Shadow from the shadow ruler or the locked screen. Grant foreground location (approximate is fine), then hold the device flat outdoors. Denying permission leaves the rest of the screen operational. The dial shows no direct shadow at night and falls back to north-up when the sensor is missing or inaccurate.
+
+No account creation, ads, user-generated content, background location, camera or microphone. English, Tools category. Public privacy policy: https://suncalc.app/android/privacy/

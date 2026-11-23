@@ -1,0 +1,11 @@
+Title: SunCalc: Sun & Shadow Planner
+Short description: Plan sunlight anywhere and follow a live shadow compass wherever you stand.
+
+Full description:
+Where will the sun set behind that building? Drop a pin, choose a day, and scrub the local clock to see the sun’s direction and the shadow an upright object would cast on level ground.
+
+Compare solstices, check twilight and golden light, save places on your device, and share a moment with a precise link. Solar calculations, town search, an overview map of the world and detailed streets around Split are included for offline use. New detailed maps elsewhere need an internet connection.
+
+For a live reading, hold your phone flat. Live Shadow uses the current sun and your phone’s compass to show the direction and length of a one-metre post’s shadow. No camera is needed. It stays free after the trial.
+
+The Android planner includes seven full days from first open. No card and no automatic charge. After the trial, choose a monthly subscription or one lifetime purchase at the price shown by Google Play. Monthly subscriptions renew until canceled; manage them or restore purchases in Google Play. Saved places stay on the device when the trial ends. The app models a clear, level horizon; it does not simulate shade from buildings, hills or trees.

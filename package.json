@@ -15,7 +15,9 @@
     "ci": "npm test && npm run build",
     "ci:admin": "tsc --noEmit && npm test",
     "usage:backfill": "tsx scripts/backfill-usage.ts",
-    "media": "node scripts/media.mjs"
+    "media": "node scripts/media.mjs",
+    "prebuild:android-web": "node scripts/map-lib.mjs && node scripts/design-css.mjs",
+    "build:android-web": "tsc --noEmit && vite build --mode android --outDir .cache/android-web --emptyOutDir && node scripts/android-web.mjs"
   },
   "dependencies": {
     "@photostructure/tz-lookup": "^11.8.0",

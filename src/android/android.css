@@ -1,0 +1,70 @@
+.android-access,
+.android-loading {
+  max-width: 32rem;
+  margin: clamp(1rem, 6vh, 4rem) auto;
+  padding: 1.25rem;
+  color: var(--ink);
+}
+.dialog .android-access {
+  margin: 0;
+  padding: 0.25rem;
+}
+.android-access h1 {
+  font-size: clamp(2rem, 8vw, 3.25rem);
+  line-height: 1.03;
+  margin: 0.4rem 0;
+}
+.android-access .result {
+  margin: 1.2rem 0;
+  padding: 0.85rem;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  width: 100%;
+}
+.store-offers,
+.android-links {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.store-offers > * {
+  flex: 1;
+}
+.android-links button {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.live-shadow svg {
+  display: block;
+  max-width: 20rem;
+  width: 100%;
+  margin: auto;
+}
+.live-shadow text {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dial-ground {
+  fill: var(--face);
+  stroke: var(--controlEdge);
+}
+.dial-ring {
+  fill: none;
+  stroke: var(--controlEdge);
+  stroke-dasharray: 2 4;
+}
+.dial-post,
+.cast-tip {
+  fill: var(--ink);
+}
+.cast-line {
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-width: 5;
+}
+.live-shadow > small {
+  display: block;
+  color: var(--muted);
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.suncalc.planner",
+      "sha256_cert_fingerprints": [
+        "26:DA:1D:8E:3A:3C:8C:04:E0:86:D2:EE:B4:54:49:B7:59:07:9B:31:C6:75:6C:50:91:65:2B:80:73:31:79:47"
+      ]
+    }
+  }
+]

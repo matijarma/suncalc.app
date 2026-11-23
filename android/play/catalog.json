@@ -1,0 +1,20 @@
+{
+  "packageName": "app.suncalc.planner",
+  "language": "en-US",
+  "distribution": "all supported purchasing markets",
+  "monthly": {
+    "productId": "suncalc_monthly",
+    "basePlanId": "monthly",
+    "billingPeriod": "P1M",
+    "autoRenew": true,
+    "priceEUR": "0.50",
+    "playTrial": false
+  },
+  "lifetime": {
+    "productId": "suncalc_lifetime",
+    "purchaseOption": "buy",
+    "consumable": false,
+    "priceEUR": "5.00"
+  },
+  "trial": { "days": 7, "starts": "first open", "autoCharge": false }
+}

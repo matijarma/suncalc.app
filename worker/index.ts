@@ -1,3 +1,4 @@
+import { androidApi } from "./android";
 import { collectUsage } from "./usage";
 import { api, type Env } from "./api";
 import { tile } from "./tiles";
@@ -7,6 +8,7 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext) {
     const p = new URL(req.url).pathname;
     try {
+      if (p.startsWith("/api/android/")) return await androidApi(req, env);
       if (p === "/api/usage") return await collectUsage(req, env.USAGE_DB);
       if (p.startsWith("/api/")) return await api(req, env);
       if (p.startsWith("/tiles/")) {
