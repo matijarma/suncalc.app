@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
-export type AccessEnv = { ACCESS_ISSUER: string; ACCESS_AUD: string };
+export type AccessEnv = { ACCESS_ISSUER?: string; ACCESS_AUD?: string };
 const jwks = new Map<string, JWTVerifyGetKey>();
 export async function authorized(
   req: Request,
@@ -11,6 +11,7 @@ export async function authorized(
     !jwt ||
     jwt.length > 16384 ||
     !env.ACCESS_AUD ||
+    !env.ACCESS_ISSUER ||
     !/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(env.ACCESS_ISSUER)
   )
     return false;

@@ -7,15 +7,23 @@
   "preview_urls": false,
   "routes": [
     { "pattern": "suncalc.app", "custom_domain": true },
-    { "pattern": "www.suncalc.app", "custom_domain": true }
+    { "pattern": "www.suncalc.app", "custom_domain": true },
+    { "pattern": "sin.suncalc.app", "custom_domain": true }
   ],
   "assets": {
     "directory": "dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/tiles/*"],
+    // The admin hostname must reach Access checks even for matching public assets.
+    "run_worker_first": true,
     "not_found_handling": "none",
   },
-  "vars": { "BILLING_MODE": "preview", "MAP_KEY": "20261118.pmtiles" },
+  "vars": {
+    "BILLING_MODE": "preview",
+    "MAP_KEY": "20261118.pmtiles",
+    "ACCESS_ISSUER": "https://kompmajstor.cloudflareaccess.com",
+    "ACCESS_AUD": "bf149dab3546b8046e051eb30c4d3491cb40ba500b43800f69a2b740defa470e"
+  },
+  "triggers": { "crons": ["7,22,37,52 * * * *"] },
   "ratelimits": [{ "name": "ANDROID_LIMIT", "namespace_id": "69417206", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [
     {

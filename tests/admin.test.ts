@@ -1,17 +1,61 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from "jose";
-import { createHandler } from "../admin/handler";
+import { serveAdmin } from "../admin/handler";
+import worker from "../worker/app";
 import { authorized } from "../admin/auth";
 import { fetchHours, syncEdge, windows, EDGE_START } from "../admin/edge";
 import { fixture } from "./usage-fixture";
 import { readStats } from "../admin/stats";
 import { renderStats } from "../admin/render";
 import { HOUR } from "../shared/usage";
-const iso = (ms: number) => new Date(ms).toISOString();
+test("the same Worker keeps admin routes and assets off the public and preview hosts", async () => {
+  const publicAssets: string[] = [];
+  const env = {
+    ASSETS: {
+      fetch: async (req: Request) => {
+        publicAssets.push(new URL(req.url).pathname);
+        return new Response("public asset");
+      },
+    },
+  } as Parameters<typeof worker.fetch>[1];
+  const call = (host: string, path: string) =>
+    worker.fetch(
+      new Request("https://" + host + path),
+      env,
+      {} as ExecutionContext,
+    );
+  for (const path of [
+    "/",
+    "/icon.svg",
+    "/site.css",
+    "/guides/",
+    "/api/config",
+    "/api/stats",
+    "/tiles/v1/0/0/0.mvt",
+  ]) {
+    const resp = await call("sin.suncalc.app", path);
+    assert.equal(resp.status, 403, path);
+    assert.match(resp.headers.get("Cache-Control")!, /private, no-store/);
+  }
+  assert.deepEqual(publicAssets, []);
+  for (const host of [
+    "suncalc.app",
+    "www.suncalc.app",
+    "suncalc-app-preview.example.workers.dev",
+  ]) {
+    assert.equal(await (await call(host, "/")).text(), "public asset");
+    assert.equal((await call(host, "/api/config")).status, 200);
+    assert.equal((await call(host, "/api/stats")).status, 404);
+  }
+});
+
 test("Access: require allowed hostname, signed identity, issuer, audience and expiry before every response", async () => {
   const { db } = fixture(),
     env = {
+      ASSETS: {
+        fetch: async (input: URL) => new Response(input.pathname),
+      } as Fetcher,
       USAGE_DB: db,
       ACCESS_ISSUER: "https://example.cloudflareaccess.com",
       ACCESS_AUD: "sin-audience",
@@ -28,19 +72,17 @@ test("Access: require allowed hostname, signed identity, issuer, audience and ex
       .setAudience(aud)
       .setExpirationTime(exp)
       .sign(pair.privateKey);
-  const app = createHandler(
-      { font: new ArrayBuffer(4), icon: "<svg/>", wordmark: "<svg/>" },
-      (r, e) => authorized(r, e, key),
-    ),
-    call = (url: string, t?: string, e = env) =>
-      app(
-        new Request(url, {
-          headers: t
-            ? { "Cf-Access-Jwt-Assertion": t }
-            : { "Cf-Access-Authenticated-User-Email": "operator@example.test" },
-        }),
-        e,
-      );
+  const call = (url: string, t?: string, e = env, method = "GET") =>
+    serveAdmin(
+      new Request(url, {
+        method,
+        headers: t
+          ? { "Cf-Access-Jwt-Assertion": t }
+          : { "Cf-Access-Authenticated-User-Email": "operator@example.test" },
+      }),
+      e,
+      (r, bindings) => authorized(r, bindings, key),
+    );
   for (const path of [
     "/",
     "/api/stats",
@@ -71,6 +113,23 @@ test("Access: require allowed hostname, signed identity, issuer, audience and ex
   for (const host of ["suncalc.app", "suncalc-admin.example.workers.dev"])
     assert.equal(
       (await call("https://" + host + "/api/stats", valid)).status,
+      404,
+    );
+  for (const [asset, path, type] of [
+    ["/font.woff2", "/brand/bricolage.woff2", "font/woff2"],
+    ["/wordmark.svg", "/brand/wordmark.svg", "image/svg+xml"],
+    ["/icon.svg", "/icon.svg", "image/svg+xml"],
+  ]) {
+    const url = "https://sin.suncalc.app" + asset;
+    const response = await call(url, valid);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Content-Type"), type);
+    assert.equal(await response.text(), path);
+    assert.equal(await (await call(url, valid, env, "HEAD")).text(), "");
+  }
+  for (const path of ["/api/config", "/site.css", "/sw.js"])
+    assert.equal(
+      (await call("https://sin.suncalc.app" + path, valid)).status,
       404,
     );
   const page = await call("https://sin.suncalc.app/", valid);
